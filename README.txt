@@ -13,8 +13,12 @@ micrcontrollers.
 
 The pin access functions can be wrapper functions for the native versions (e.g. on the nRF5 SDK)
 On AVR micros, the digitalWrite/digitalRead/pinMode functions are somewhat
-slow because they check the pin numbers against tables. A future version
-will include direct port access for greater efficiency.
+slow because they check the pin numbers against tables and do other tasks.
+This library includes logic to speed that up. By specifying pin numbers as the
+port name + bit, the library will run considerably faster on AVR
+microcontrollers. For example, On the Arduino Uno (ATmega328P), I/O pin 9 is
+actually I/O Port B, bit 1. To use the direct pin method, you would specify
+the pin number as 0xB1. 
 
 Usage:
 -----

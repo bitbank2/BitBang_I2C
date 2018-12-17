@@ -22,29 +22,123 @@
 
 static int iSCL, iSDA; // keep requested pin numbers in private statics
 static int iDelay; // bit delay in ms for the requested clock rate
+#ifdef __AVR__
+volatile uint8_t *iDDR_SCL, *iPort_SCL_Out;
+volatile uint8_t *iDDR_SDA, *iPort_SDA_In, *iPort_SDA_Out;
+uint8_t iSDABit, iSCLBit;
+#endif
+
+#ifdef __AVR__
+uint8_t getPinInfo(uint8_t pin, volatile uint8_t **iDDR, volatile uint8_t **iPort, int bInput)
+{
+  uint8_t port, bit;
+
+  port = (pin & 0xf0); // hex port (A,B,D,E,F)
+  bit = pin & 0x7;
+  switch (port)
+  {
+#if defined (__AVR_ATmega128__) || defined (__AVR_ATmega128RFA1__) || defined (__AVR_ATmega1280__)
+    case 0xE0:
+      *iPort = (bInput) ? &PINE : &PORTE;
+      *iDDR = &DDRE;
+      break;
+    case 0xF0:
+      *iPort = (bInput) ? &PINF : &PORTF;
+      *iDDR = &DDRF;
+      break;
+    case 0xA0: // really port G
+      *iPort = (bInput) ? &PING : &PORTG;
+      *iDDR = &DDRG;
+      break;
+#else
+    case 0xC0:
+      *iPort = (bInput) ? &PINC : &PORTC;
+      *iDDR = &DDRC;
+      break;
+#endif
+    case 0xB0:
+      *iPort = (bInput) ? &PINB : &PORTB;
+      *iDDR = &DDRB;
+      break;
+    case 0xD0:
+      *iPort = (bInput) ? &PIND : &PORTD;
+      *iDDR = &DDRD;
+      break;
+  }
+  return bit;
+} /* getPinInfo() */
+#endif // __AVR__
 
 inline uint8_t SDA_READ(void)
 {
-  return digitalRead(iSDA);
+#ifdef __AVR__
+  if (iSDA >= 0xa0) // direct pin numbering
+  {
+    if (*iPort_SDA_In & iSDABit)
+       return HIGH;
+    else
+       return LOW;
+  }
+  else
+#endif
+  {
+    return digitalRead(iSDA);
+  }
 }
 inline void SCL_HIGH(void)
 {
-  pinMode(iSCL, INPUT);
+#ifdef __AVR__
+  if (iSCL >= 0xa0) // direct pin numbering
+  {
+    *iDDR_SCL &= ~iSCLBit;
+  }
+  else
+#endif
+  {
+    pinMode(iSCL, INPUT);
+  }
 }
 
 inline void SCL_LOW(void)
 {
-  pinMode(iSCL, OUTPUT);
+#ifdef __AVR__
+  if (iSCL >= 0xa0) // direct pin numbering
+  {
+    *iDDR_SCL |= iSCLBit;
+  }
+  else
+#endif
+  {
+    pinMode(iSCL, OUTPUT);
+  }
 }
 
 inline void SDA_HIGH(void)
 {
-  pinMode(iSDA, INPUT);
+#ifdef __AVR__
+  if (iSDA >= 0xa0) // direct pin numbering
+  {
+    *iDDR_SDA &= ~iSDABit;
+  }
+  else
+#endif
+  {
+    pinMode(iSDA, INPUT);
+  }
 }
 
 inline void SDA_LOW(void)
 {
-  pinMode(iSDA, OUTPUT);
+#ifdef __AVR__
+  if (iSDA >= 0xa0) // direct pin numbering
+  {
+    *iDDR_SDA |= iSDABit;
+  }
+  else
+#endif
+  {
+    pinMode(iSDA, OUTPUT);
+  }
 }
 
 inline void sleep_us(int iDelay)
@@ -177,11 +271,25 @@ void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock)
 {
    iSDA = iSDA_Pin;
    iSCL = iSCL_Pin;
-   pinMode(iSDA, INPUT); // let the lines float (tri-state)
-   pinMode(iSCL, INPUT);
-   digitalWrite(iSDA, LOW); // setting low = enabling as outputs
-   digitalWrite(iSCL, LOW);
-
+   if (iSDA < 0xa0)
+   {
+     pinMode(iSDA, INPUT); // let the lines float (tri-state)
+     pinMode(iSCL, INPUT);
+     digitalWrite(iSDA, LOW); // setting low = enabling as outputs
+     digitalWrite(iSCL, LOW);
+   }
+   else // direct pin mode, get port address and bit
+   {
+      iSDABit = 1 << (iSDA & 0x7);
+      getPinInfo(iSDA, &iDDR_SDA, &iPort_SDA_Out, 0);
+      getPinInfo(iSDA, &iDDR_SDA, &iPort_SDA_In, 1);
+      iSCLBit = 1 << (iSCL & 0x7);
+      getPinInfo(iSDA, &iDDR_SCL, &iPort_SCL_Out, 0);
+      *iDDR_SDA &= ~iSDABit; // pinMode input
+      *iDDR_SCL &= ~iSCLBit; // pinMode input
+      *iPort_SDA_Out &= ~iSDABit; // digitalWrite SDA LOW
+      *iPort_SCL_Out &= ~iSCLBit; // digitalWrite SCL LOW
+   }
   // For now, we only support 100, 400 or 800K clock rates
   // all other values default to 100K
    if (iClock >= 800000)
