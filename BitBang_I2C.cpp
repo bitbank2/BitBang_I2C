@@ -37,33 +37,42 @@ uint8_t getPinInfo(uint8_t pin, volatile uint8_t **iDDR, volatile uint8_t **iPor
   bit = pin & 0x7;
   switch (port)
   {
-#if defined (__AVR_ATmega128__) || defined (__AVR_ATmega128RFA1__) || defined (__AVR_ATmega1280__)
+#ifdef PORTE
     case 0xE0:
       *iPort = (bInput) ? &PINE : &PORTE;
       *iDDR = &DDRE;
       break;
+#endif
+#ifdef PORTF
     case 0xF0:
       *iPort = (bInput) ? &PINF : &PORTF;
       *iDDR = &DDRF;
       break;
+#endif
+#ifdef PORTG
     case 0xA0: // really port G
       *iPort = (bInput) ? &PING : &PORTG;
       *iDDR = &DDRG;
       break;
-#else
+#endif
+#ifdef PORTC
     case 0xC0:
       *iPort = (bInput) ? &PINC : &PORTC;
       *iDDR = &DDRC;
       break;
 #endif
+#ifdef PORTB
     case 0xB0:
       *iPort = (bInput) ? &PINB : &PORTB;
       *iDDR = &DDRB;
       break;
+#endif
+#ifdef PORTD
     case 0xD0:
       *iPort = (bInput) ? &PIND : &PORTD;
       *iDDR = &DDRD;
       break;
+#endif
   }
   return bit;
 } /* getPinInfo() */
@@ -175,6 +184,31 @@ uint8_t i, ack;
   return (ack == 0) ? 1:0; // a low ACK bit means success
 } /* i2cByteOut() */
 
+static inline int i2cByteOutFast(uint8_t b)
+{
+uint8_t i, ack;
+
+     if (b & 0x80)
+        SDA_HIGH(); // set data line to 1
+     else
+        SDA_LOW(); // set data line to 0
+     for (i=0; i<8; i++)
+     {
+         SCL_HIGH(); // clock high (slave latches data)
+         sleep_us(iDelay);
+         SCL_LOW(); // clock low
+     } // for i
+// read ack bit
+  SDA_HIGH(); // set data line for reading
+  SCL_HIGH(); // clock line high
+  sleep_us(iDelay); // DEBUG - delay/2
+  ack = SDA_READ();
+  SCL_LOW(); // clock low
+  sleep_us(iDelay); // DEBUG - delay/2
+  SDA_LOW(); // data low
+  return (ack == 0) ? 1:0; // a low ACK bit means success
+} /* i2cByteOutFast() */
+
 //
 // Receive a byte and read the ack bit
 // if we get a NACK (negative acknowledge) return 0
@@ -243,7 +277,10 @@ int rc, iOldLen = iLen;
    while (iLen && rc == 1)
    {
       b = *pData++;
-      rc = i2cByteOut(b);
+      if (b == 0xff || b == 0)
+         rc = i2cByteOutFast(b); // speed it up a bit more if all bits are ==
+      else
+         rc = i2cByteOut(b);
       if (rc == 1) // success
       {
          iLen--;
