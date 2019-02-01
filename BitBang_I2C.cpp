@@ -315,6 +315,7 @@ void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock)
      digitalWrite(iSDA, LOW); // setting low = enabling as outputs
      digitalWrite(iSCL, LOW);
    }
+#ifdef __AVR__
    else // direct pin mode, get port address and bit
    {
       iSDABit = 1 << (iSDA & 0x7);
@@ -327,6 +328,7 @@ void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock)
       *iPort_SDA_Out &= ~iSDABit; // digitalWrite SDA LOW
       *iPort_SCL_Out &= ~iSCLBit; // digitalWrite SCL LOW
    }
+#endif // __AVR__
   // For now, we only support 100, 400 or 800K clock rates
   // all other values default to 100K
    if (iClock >= 800000)
