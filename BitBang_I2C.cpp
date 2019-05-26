@@ -27,6 +27,12 @@ volatile uint8_t *iDDR_SCL, *iPort_SCL_Out;
 volatile uint8_t *iDDR_SDA, *iPort_SDA_In, *iPort_SDA_Out;
 uint8_t iSDABit, iSCLBit;
 #endif
+#ifdef FUTURE
+//#else // must be a 32-bit MCU
+volatile uint32_t *iDDR_SCL, *iPort_SCL_Out;
+volatile uint32_t *iDDR_SDA, *iPort_SDA_In, *iPort_SDA_Out;
+uint32_t iSDABit, iSCLBit;
+#endif
 
 #ifdef __AVR__
 uint8_t getPinInfo(uint8_t pin, volatile uint8_t **iDDR, volatile uint8_t **iPort, int bInput)
@@ -76,6 +82,28 @@ uint8_t getPinInfo(uint8_t pin, volatile uint8_t **iDDR, volatile uint8_t **iPor
   }
   return bit;
 } /* getPinInfo() */
+#endif
+
+//#else // 32-bit version
+#ifdef FUTURE
+uint32_t getPinInfo(uint8_t pin, volatile uint32_t **iDDR, volatile uint32_t **iPort, int bInput)
+{
+  uint32_t port, bit;
+
+  if (pin <= 0xbf) // port 0
+  {
+    *iPort = (bInput) ? &REG_PORT_IN0 : &REG_PORT_OUT0;
+    *iDDR = &REG_PORT_DIR0;
+  }
+  else if (pin <= 0xdf) // port 1
+  {
+    *iPort = (bInput) ? &REG_PORT_IN1 : &REG_PORT_OUT1;
+    *iDDR = &REG_PORT_DIR1;
+  }
+  else return 0xffffffff; // invalid
+  bit = pin & 0x1f;
+  return bit;
+} /* getPinInfo() */
 #endif // __AVR__
 
 inline uint8_t SDA_READ(void)
@@ -91,7 +119,9 @@ inline uint8_t SDA_READ(void)
   else
 #endif
   {
+#ifndef __AVR_ATtiny85__
     return digitalRead(iSDA);
+#endif
   }
 }
 inline void SCL_HIGH(void)
@@ -104,7 +134,9 @@ inline void SCL_HIGH(void)
   else
 #endif
   {
+#ifndef __AVR_ATtiny85__
     pinMode(iSCL, INPUT);
+#endif
   }
 }
 
@@ -118,7 +150,9 @@ inline void SCL_LOW(void)
   else
 #endif
   {
+#ifndef __AVR_ATtiny85__
     pinMode(iSCL, OUTPUT);
+#endif
   }
 }
 
@@ -132,7 +166,9 @@ inline void SDA_HIGH(void)
   else
 #endif
   {
+#ifndef __AVR_ATtiny85__
     pinMode(iSDA, INPUT);
+#endif
   }
 }
 
@@ -146,14 +182,28 @@ inline void SDA_LOW(void)
   else
 #endif
   {
+#ifndef __AVR_ATtiny85__
     pinMode(iSDA, OUTPUT);
+#endif
   }
 }
 
-inline void sleep_us(int iDelay)
+void sleep_us(int iDelay)
 {
+#ifdef __AVR_ATtiny85__
+  iDelay *= 2;
+  while (iDelay)
+  {
+    __asm__ __volatile__ (
+    "nop" "\n\t"
+    "nop"); //just waiting 2 cycle
+    iDelay--;
+  }
+#else
   delayMicroseconds(iDelay);
+#endif
 }
+#ifndef __AVR_ATtiny85__
 // Transmit a byte and read the ack bit
 // if we get a NACK (negative acknowledge) return 0
 // otherwise return 1 for success
@@ -183,7 +233,89 @@ uint8_t i, ack;
   SDA_LOW(); // data low
   return (ack == 0) ? 1:0; // a low ACK bit means success
 } /* i2cByteOut() */
+#endif
 
+#ifdef __AVR__
+#define SDA_LOW_AVR *iDDR_sda |= sdabit;
+#define SDA_HIGH_AVR *iDDR_sda &= ~sdabit;
+#define SCL_LOW_AVR *iDDR_scl |= sclbit;
+#define SCL_HIGH_AVR *iDDR_scl &= ~sclbit;
+#define SDA_READ_AVR (*iPort_SDA_In & sdabit)
+static inline int i2cByteOutAVR(uint8_t b)
+{
+uint8_t i, ack;
+uint8_t *iDDR_sda = (uint8_t *)iDDR_SDA; // Put in local variables to avoid reading
+uint8_t *iDDR_scl = (uint8_t *)iDDR_SCL; // from volatile pointer vars each time
+uint8_t sdabit = iSDABit;
+uint8_t sclbit = iSCLBit;
+
+     for (i=0; i<8; i++)
+     {
+         if (b & 0x80)
+           SDA_HIGH_AVR // set data line to 1
+         else
+           SDA_LOW_AVR // set data line to 0
+         SCL_HIGH_AVR // clock high (slave latches data)
+         sleep_us(iDelay);
+         SCL_LOW_AVR // clock low
+         b <<= 1;
+     } // for i
+// read ack bit
+  SDA_HIGH_AVR // set data line for reading
+  SCL_HIGH_AVR // clock line high
+//  sleep_us(iDelay); // DEBUG - delay/2
+  ack = SDA_READ_AVR;
+  SCL_LOW_AVR // clock low
+//  sleep_us(iDelay); // DEBUG - delay/2
+  SDA_LOW_AVR // data low
+  return (ack == 0) ? 1:0; // a low ACK bit means success
+} /* i2cByteOutAVR() */
+
+#define BOTH_LOW_FAST *iDDR = both_low;
+#define BOTH_HIGH_FAST *iDDR = both_high;
+#define SCL_HIGH_FAST *iDDR = scl_high; 
+#define SDA_HIGH_FAST *iDDR = sda_high;
+#define SDA_READ_FAST *iDDR & iSDABit;
+static inline int i2cByteOutAVRFast(uint8_t b)
+{
+uint8_t i, ack;
+uint8_t *iDDR = (uint8_t *)iDDR_SDA; // Put in local variables to avoid reading
+uint8_t bOld = *iDDR; // current value
+uint8_t both_low = bOld | iSDABit | iSCLBit;
+uint8_t both_high = bOld & ~(iSDABit | iSCLBit);
+uint8_t scl_high = (bOld | iSDABit) & ~iSCLBit;
+uint8_t sda_high = (bOld | iSCLBit) & ~iSDABit;
+
+     BOTH_LOW_FAST // start with both lines set to 0
+     for (i=0; i<8; i++)
+     {
+         if (b & 0x80)
+         {
+           SDA_HIGH_FAST // set data line to 1
+           sleep_us(iDelay);
+           BOTH_HIGH_FAST // rising edge clocks data
+         }
+         else // more probable case (0) = shortest code path
+         {
+           SCL_HIGH_FAST // clock high (slave latches data)
+         }
+         sleep_us(iDelay);
+         BOTH_LOW_FAST // clock low
+         b <<= 1;
+     } // for i
+// read ack bit
+  SDA_HIGH_FAST // set data line for reading
+  BOTH_HIGH_FAST // clock line high
+  sleep_us(iDelay); // DEBUG - delay/2
+  ack = SDA_READ_FAST;
+  BOTH_LOW_FAST // clock low
+//  sleep_us(iDelay); // DEBUG - delay/2
+//  SDA_LOW_AVR // data low
+  return (ack == 0) ? 1:0; // a low ACK bit means success
+} /* i2cByteOutAVR() */
+#endif // __AVR__
+
+#ifndef __AVR_ATtiny85__
 static inline int i2cByteOutFast(uint8_t b)
 {
 uint8_t i, ack;
@@ -208,7 +340,7 @@ uint8_t i, ack;
   SDA_LOW(); // data low
   return (ack == 0) ? 1:0; // a low ACK bit means success
 } /* i2cByteOutFast() */
-
+#endif
 //
 // Receive a byte and read the ack bit
 // if we get a NACK (negative acknowledge) return 0
@@ -264,7 +396,11 @@ static inline int i2cBegin(uint8_t addr, uint8_t bRead)
    addr <<= 1;
    if (bRead)
       addr++; // set read bit
+#ifdef __AVR_ATtiny85__
+   rc = i2cByteOutAVRFast(addr);
+#else
    rc = i2cByteOut(addr); // send the slave address and R/W bit
+#endif
    return rc;
 } /* i2cBegin() */
 
@@ -277,10 +413,23 @@ int rc, iOldLen = iLen;
    while (iLen && rc == 1)
    {
       b = *pData++;
-      if (b == 0xff || b == 0)
-         rc = i2cByteOutFast(b); // speed it up a bit more if all bits are ==
-      else
-         rc = i2cByteOut(b);
+#ifdef __AVR_ATtiny85__
+      rc = i2cByteOutAVRFast(b);
+#else
+#ifdef __AVR__
+     if (iSDA >= 0xa0)
+     {
+        rc = i2cByteOutAVRFast(b);
+     }
+     else
+#endif
+     {
+        if (b == 0xff || b == 0)
+           rc = i2cByteOutFast(b); // speed it up a bit more if all bits are ==
+        else
+           rc = i2cByteOut(b);
+     }
+#endif
       if (rc == 1) // success
       {
          iLen--;
@@ -310,19 +459,21 @@ void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock)
    iSCL = iSCL_Pin;
    if (iSDA < 0xa0)
    {
+#ifndef __AVR_ATtiny85__
      pinMode(iSDA, INPUT); // let the lines float (tri-state)
      pinMode(iSCL, INPUT);
      digitalWrite(iSDA, LOW); // setting low = enabling as outputs
      digitalWrite(iSCL, LOW);
+#endif
    }
 #ifdef __AVR__
    else // direct pin mode, get port address and bit
    {
-      iSDABit = 1 << (iSDA & 0x7);
-      getPinInfo(iSDA, &iDDR_SDA, &iPort_SDA_Out, 0);
+//      iSDABit = 1 << (iSDA & 0x7);
+      iSDABit = 1 << getPinInfo(iSDA, &iDDR_SDA, &iPort_SDA_Out, 0);
       getPinInfo(iSDA, &iDDR_SDA, &iPort_SDA_In, 1);
-      iSCLBit = 1 << (iSCL & 0x7);
-      getPinInfo(iSDA, &iDDR_SCL, &iPort_SCL_Out, 0);
+//      iSCLBit = 1 << (iSCL & 0x7);
+      iSCLBit = 1 << getPinInfo(iSCL, &iDDR_SCL, &iPort_SCL_Out, 0);
       *iDDR_SDA &= ~iSDABit; // pinMode input
       *iDDR_SCL &= ~iSCLBit; // pinMode input
       *iPort_SDA_Out &= ~iSDABit; // digitalWrite SDA LOW
@@ -331,7 +482,9 @@ void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock)
 #endif // __AVR__
   // For now, we only support 100, 400 or 800K clock rates
   // all other values default to 100K
-   if (iClock >= 800000)
+   if (iClock >= 1000000)
+      iDelay = 0;
+   else if (iClock >= 800000)
       iDelay = 1;
    else if (iClock >= 400000)
       iDelay = 2;
@@ -347,7 +500,8 @@ void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock)
 void I2CScan(uint8_t *pMap)
 {
   int i;
-  memset(pMap, 0, 16);
+  for (i=0; i<16; i++) // clear the bitmap
+    pMap[i] = 0;
   for (i=0; i<128; i++) // try every address
   {
     if (i2cBegin(i, 0)) // try to write to every device

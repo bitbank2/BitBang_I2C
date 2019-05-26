@@ -1,5 +1,5 @@
 Bit Bang I2C library
-Copyright (c) 2018 BitBank Software, Inc.
+Copyright (c) 2018-2019 BitBank Software, Inc.
 Written by Larry Bank (bitbank@pobox.com)
 Project started 10/12/2018
 
@@ -18,7 +18,8 @@ This library includes logic to speed that up. By specifying pin numbers as the
 port name + bit, the library will run considerably faster on AVR
 microcontrollers. For example, On the Arduino Uno (ATmega328P), I/O pin 9 is
 actually I/O Port B, bit 1. To use the direct pin method, you would specify
-the pin number as 0xB1. 
+the pin number as 0xB1. On the ATtiny85, this is the only pin numbering
+supported so that the Wire library doesn't get linked in (to save FLASH space). 
 
 Usage:
 -----
