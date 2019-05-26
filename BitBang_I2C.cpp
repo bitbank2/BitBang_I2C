@@ -397,7 +397,7 @@ static inline int i2cBegin(uint8_t addr, uint8_t bRead)
    if (bRead)
       addr++; // set read bit
 #ifdef __AVR_ATtiny85__
-   rc = i2cByteOutAVRFast(addr);
+   rc = i2cByteOutAVR(addr);
 #else
    rc = i2cByteOut(addr); // send the slave address and R/W bit
 #endif
