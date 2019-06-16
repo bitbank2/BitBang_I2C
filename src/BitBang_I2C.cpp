@@ -493,6 +493,21 @@ void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock)
    else iDelay = 1000000 / iClock;
 } /* i2cInit() */
 //
+// Test a specific I2C address to see if a device responds
+// returns 0 for no response, 1 for a response
+//
+uint8_t I2CTest(uint8_t addr)
+{
+uint8_t response = 0;
+
+  if (i2cBegin(addr, 0)) // try to write to the given address
+  {
+    response = 1;
+  }
+  i2cEnd();
+  return response;
+} /* I2CTest() */
+//
 // Scans for I2C devices on the bus
 // returns a bitmap of devices which are present (128 bits = 16 bytes, LSB first)
 // A set bit indicates that a device responded at that address

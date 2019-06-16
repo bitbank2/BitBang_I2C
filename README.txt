@@ -40,6 +40,8 @@ unsigned char ucMap[16];
 
 I2CScan(ucMap);
 
+To detect if a single address is active, use I2CTest(addr).
+
 For reading and writing data to the I2C device, use the following functions:
 
 I2CRead(uint8_t u8Address, uint8_t *pu8Data, int iLength);

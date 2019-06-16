@@ -36,6 +36,12 @@ int I2CWrite(uint8_t iAddr, uint8_t *pData, int iLen);
 //
 // Scans for I2C devices on the bus
 // returns a bitmap of devices which are present (128 bits = 16 bytes, LSB first)
+//
+// Test if an address responds
+// returns 0 if no response, 1 if it responds
+//
+uint8_t I2CTest(uint8_t addr);
+
 // A set bit indicates that a device responded at that address
 //
 void I2CScan(uint8_t *pMap);
