@@ -19,6 +19,36 @@
 //
 #ifndef __BITBANG_I2C__
 #define __BITBANG_I2C__
+// supported devices
+enum {
+  DEVICE_UNKNOWN = 0,
+  DEVICE_SSD1306,
+  DEVICE_SH1106,
+  DEVICE_VL53L0X,
+  DEVICE_BMP180,
+  DEVICE_BMP280,
+  DEVICE_BME280,
+  DEVICE_MPU6000,
+  DEVICE_MPU9250,
+  DEVICE_MCP9808,
+  DEVICE_LSM6DS3,
+  DEVICE_ADXL345,
+  DEVICE_ADS1115,
+  DEVICE_MAX44009,
+  DEVICE_MAG3110,
+  DEVICE_CCS811,
+  DEVICE_HTS221,
+  DEVICE_LPS25H,
+  DEVICE_LSM9DS1,
+  DEVICE_LM8330,
+  DEVICE_DS3231,
+  DEVICE_LIS3DH,
+  DEVICE_LIS3DSH,
+  DEVICE_INA219,
+  DEVICE_SHT3X,
+  DEVICE_HDC1080
+};
+
 //
 // Read N bytes
 //
@@ -51,6 +81,11 @@ void I2CScan(uint8_t *pMap);
 // as well as the clock rate in Hz
 //
 void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock);
+//
+// Figure out what device is at that address
+// returns the enumerated value
+//
+int I2CDiscoverDevice(uint8_t i);
 
 #endif //__BITBANG_I2C__
 

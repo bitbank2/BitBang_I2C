@@ -1,6 +1,6 @@
 //
 // Bit Bang I2C library
-// Copyright (c) 2018 BitBank Software, Inc.
+// Copyright (c) 2018-2019 BitBank Software, Inc.
 // Written by Larry Bank (bitbank@pobox.com)
 // Project started 10/12/2018
 //
@@ -19,6 +19,9 @@
 //
 #include <Arduino.h>
 #include <BitBang_I2C.h>
+#ifndef __AVR_ATtiny85__
+#include <Wire.h>
+#endif
 
 static int iSCL, iSDA; // keep requested pin numbers in private statics
 static int iDelay; // bit delay in ms for the requested clock rate
@@ -406,7 +409,7 @@ static inline int i2cBegin(uint8_t addr, uint8_t bRead)
 
 static inline int i2cWrite(uint8_t *pData, int iLen)
 {
-uint8_t i, b;
+uint8_t b;
 int rc, iOldLen = iLen;
 
    rc = 1;
@@ -440,9 +443,6 @@ int rc, iOldLen = iLen;
 
 static inline void i2cRead(uint8_t *pData, int iLen)
 {
-uint8_t i, b;
-int iOldLen = iLen;
-
    while (iLen--)
    {
       *pData++ = i2cByteIn(iLen == 0);
@@ -457,6 +457,14 @@ void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock)
 {
    iSDA = iSDA_Pin;
    iSCL = iSCL_Pin;
+   if (iSDA == -1 || iSCL == -1) // use Wire library
+   {
+#ifndef __AVR_ATtiny85__
+       Wire.begin();
+       Wire.setClock(iClock);
+#endif
+       return;
+   }
    if (iSDA < 0xa0)
    {
 #ifndef __AVR_ATtiny85__
@@ -500,6 +508,17 @@ uint8_t I2CTest(uint8_t addr)
 {
 uint8_t response = 0;
 
+  if (iSDA == -1 || iSCL == -1)
+  {
+#ifndef __AVR_ATtiny85__
+  // We use the return value of
+  // the Write.endTransmisstion to see if
+  // a device did acknowledge to the address.
+  Wire.beginTransmission(addr);
+  response = !Wire.endTransmission();
+#endif
+    return response;
+  }
   if (i2cBegin(addr, 0)) // try to write to the given address
   {
     response = 1;
@@ -517,13 +536,27 @@ void I2CScan(uint8_t *pMap)
   int i;
   for (i=0; i<16; i++) // clear the bitmap
     pMap[i] = 0;
-  for (i=0; i<128; i++) // try every address
+  for (i=1; i<128; i++) // try every address
   {
-    if (i2cBegin(i, 0)) // try to write to every device
+    if (iSDA == -1 || iSCL == -1)
     {
-      pMap[i >> 3] |= (1 << (i & 7));
+#ifndef __AVR_ATtiny85__
+        // We use the return value of
+        // the Write.endTransmisstion to see if
+        // a device did acknowledge to the address.
+        Wire.beginTransmission(i);
+        if (!Wire.endTransmission())
+            pMap[i>>3] |= (1 << (i & 7));
+#endif
     }
-    i2cEnd();
+    else
+    {
+      if (i2cBegin(i, 0)) // try to write to every device
+      {
+        pMap[i >> 3] |= (1 << (i & 7));
+      }
+      i2cEnd();
+    }
   }
 } /* I2CScan() */
 //
@@ -533,8 +566,17 @@ void I2CScan(uint8_t *pMap)
 //
 int I2CWrite(uint8_t iAddr, uint8_t *pData, int iLen)
 {
-  int rc;
+  int rc = 0;
   
+  if (iSDA == -1 || iSCL == -1)
+  {
+#ifndef __AVR_ATtiny85__
+    Wire.beginTransmission(iAddr);
+    Wire.write(pData, (uint8_t)iLen);
+    rc = !Wire.endTransmission();
+#endif
+    return rc;
+  }
   rc = i2cBegin(iAddr, 0);
   if (rc == 1) // slave sent ACK for its address
   {
@@ -550,6 +592,21 @@ int I2CReadRegister(uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen)
 {
   int rc;
   
+  if (iSDA == -1 || iSCL == -1) // use the wire library
+  {
+      int i = 0;
+#ifndef __AVR_ATtiny85__
+      Wire.beginTransmission(iAddr);
+      Wire.write(u8Register);
+      Wire.endTransmission();
+      Wire.requestFrom(iAddr, (uint8_t)iLen);
+      while (i < iLen)
+      {
+          pData[i++] = Wire.read();
+      }
+#endif
+      return (i > 0);
+  }
   rc = i2cBegin(iAddr, 0); // start a write operation
   if (rc == 1) // slave sent ACK for its address
   {
@@ -565,7 +622,7 @@ int I2CReadRegister(uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen)
      }
   }
   i2cEnd();
-  return rc; // returns the number of bytes received or 0 for error
+  return rc; // returns 1 for success, 0 for error
 } /* I2CReadRegister() */
 //
 // Read N bytes
@@ -574,6 +631,18 @@ int I2CRead(uint8_t iAddr, uint8_t *pData, int iLen)
 {
   int rc;
   
+    if (iSDA == -1 || iSCL == -1) // use the wire library
+    {
+        int i = 0;
+#ifndef __AVR_ATtiny85__
+        Wire.requestFrom(iAddr, (uint8_t)iLen);
+        while (i < iLen)
+        {
+            pData[i++] = Wire.read();
+        }
+#endif
+        return (i > 0);
+    }
   rc = i2cBegin(iAddr, 1);
   if (rc == 1) // slave sent ACK for its address
   {
@@ -582,3 +651,139 @@ int I2CRead(uint8_t iAddr, uint8_t *pData, int iLen)
   i2cEnd();
   return rc; // returns 1 for success, 0 for error
 } /* I2CRead() */
+//
+// Figure out what device is at that address
+// returns the enumerated value
+//
+int I2CDiscoverDevice(uint8_t i)
+{
+uint8_t j, cTemp[8];
+int iDevice = DEVICE_UNKNOWN;
+
+  if (i == 0x3c || i == 0x3d) // Probably an OLED display
+  {
+    I2CReadRegister(i, 0x00, cTemp, 1);
+    cTemp[0] &= 0xbf; // mask off power on/off bit
+    if (cTemp[0] == 0x8) // SH1106
+       iDevice = DEVICE_SH1106;
+    else if (cTemp[0] == 3 || cTemp[0] == 6)
+       iDevice = DEVICE_SSD1306;
+    return iDevice;
+  }
+  if (i >= 0x40 && i <= 0x4f) // check for TI INA219 power measurement sensor
+  {
+    I2CReadRegister(i, 0x00, cTemp, 2);
+    if (cTemp[0] == 0x39 && cTemp[1] == 0x9f)
+       return DEVICE_INA219;
+  }
+//  else if (i == 0x5b) // MLX90615?
+//  {
+//    I2CReadRegister(i, 0x10, cTemp, 3);
+//    for (j=0; j<3; j++) Serial.println(cTemp[j], HEX);
+//  }
+  // try to identify it from the known devices using register contents
+  {
+    // Check for TI HDC1080
+    I2CReadRegister(i, 0xff, cTemp, 2);
+    if (cTemp[0] == 0x10 && cTemp[1] == 0x50)
+       return DEVICE_HDC1080;
+
+    // Check for VL53L0X
+    I2CReadRegister(i, 0xc0, cTemp, 3);
+    if (cTemp[0] == 0xee && cTemp[1] == 0xaa && cTemp[2] == 0x10)
+       return DEVICE_VL53L0X;
+
+    // Check for CCS811
+    I2CReadRegister(i, 0x20, cTemp, 1);
+    if (cTemp[0] == 0x81) // Device ID
+       return DEVICE_CCS811;
+
+    // Check for LIS3DSH accelerometer from STMicro
+    I2CReadRegister(i, 0x0f, cTemp, 1);
+    if (cTemp[0] == 0x3f) // WHO_AM_I
+       return DEVICE_LIS3DSH;
+
+    // Check for LIS3DH accelerometer from STMicro
+    I2CReadRegister(i, 0x0f, cTemp, 1);
+    if (cTemp[0] == 0x33) // WHO_AM_I
+       return DEVICE_LIS3DH;
+
+    // Check for LSM9DS1 magnetometer/gyro/accel sensor from STMicro
+    I2CReadRegister(i, 0x0f, cTemp, 1);
+    if (cTemp[0] == 0x68) // WHO_AM_I
+       return DEVICE_LSM9DS1;
+
+    // Check for LPS25H pressure sensor from STMicro
+    I2CReadRegister(i, 0x0f, cTemp, 1);
+    if (cTemp[0] == 0xbd) // WHO_AM_I
+       return DEVICE_LPS25H;
+    
+    // Check for HTS221 temp/humidity sensor from STMicro
+    I2CReadRegister(i, 0x0f, cTemp, 1);
+    if (cTemp[0] == 0xbc) // WHO_AM_I
+       return DEVICE_HTS221;
+    
+    // Check for MAG3110
+    I2CReadRegister(i, 0x07, cTemp, 1);
+    if (cTemp[0] == 0xc4) // WHO_AM_I
+       return DEVICE_MAG3110;
+
+    // Check for LM8330 keyboard controller
+    I2CReadRegister(i, 0x80, cTemp, 2);
+    if (cTemp[0] == 0x0 && cTemp[1] == 0x84) // manufacturer code + software revision
+       return DEVICE_LM8330;
+
+    // Check for MAX44009
+    if (i == 0x4a || i == 0x4b)
+    {
+      for (j=0; j<8; j++)
+        I2CReadRegister(i, j, &cTemp[j], 1); // check for power-up reset state of registers
+      if ((cTemp[2] == 3 || cTemp[2] == 2) && cTemp[6] == 0 && cTemp[7] == 0xff)
+         return DEVICE_MAX44009;
+    }
+       
+    // Check for ADS1115
+    I2CReadRegister(i, 0x02, cTemp, 2); // Lo_thresh defaults to 0x8000
+    I2CReadRegister(i, 0x03, &cTemp[2], 2); // Hi_thresh defaults to 0x7fff
+    if (cTemp[0] == 0x80 && cTemp[1] == 0x00 && cTemp[2] == 0x7f && cTemp[3] == 0xff)
+       return DEVICE_ADS1115;
+
+    // Check for MCP9808
+    I2CReadRegister(i, 0x06, cTemp, 2); // manufacturer ID && get device ID/revision
+    I2CReadRegister(i, 0x07, &cTemp[2], 2); // need to read them individually
+    if (cTemp[0] == 0 && cTemp[1] == 0x54 && cTemp[2] == 0x04 && cTemp[3] == 0x00)
+       return DEVICE_MCP9808;
+       
+    // Check for BMP280/BME280
+    I2CReadRegister(i, 0xd0, cTemp, 1);
+    if (cTemp[0] == 0x55) // BMP180
+       return DEVICE_BMP180;
+    else if (cTemp[0] == 0x58)
+       return DEVICE_BMP280;
+    else if (cTemp[0] == 0x60) // BME280
+       return DEVICE_BME280;
+
+    // Check for LSM6DS3
+    I2CReadRegister(i, 0x0f, cTemp, 1); // WHO_AM_I
+    if (cTemp[0] == 0x69)
+       return DEVICE_LSM6DS3;
+       
+    // Check for ADXL345
+    I2CReadRegister(i, 0x00, cTemp, 1); // DEVID
+    if (cTemp[0] == 0xe5)
+       return DEVICE_ADXL345;
+       
+    // Check for MPU-60x0 and MPU-9250
+    I2CReadRegister(i, 0x75, cTemp, 1);
+    if (cTemp[0] == (i & 0xfe)) // Current I2C address (low bit set to 0)
+       return DEVICE_MPU6000;
+    else if (cTemp[0] == 0x71)
+       return DEVICE_MPU9250;
+
+    // Check for DS3231 RTC
+    I2CReadRegister(i, 0x0e, cTemp, 1); // read the control register
+    if (i == 0x68 && cTemp[0] == 0x1c) // fixed I2C address and power on reset value  
+       return DEVICE_DS3231;
+  }
+  return iDevice;
+} /* I2CDiscoverDevice() */

@@ -24,7 +24,8 @@ supported so that the Wire library doesn't get linked in (to save FLASH space).
 Usage:
 -----
 Start by initializing the library with the desired pin numbers for SDA/SCL
-along with the desired clock frequency. Frequencies above 400Khz are 
+along with the desired clock frequency. Pin numbers of -1 tell the library to make use
+of the Wire library instead of bit-banging the protocol. Frequencies above 400Khz are 
 possible, but not necessarily accurate. Luckily I2C devices don't really
 care about the exact clock frequency, only that the signals are stable
 within the given periods.
@@ -42,10 +43,16 @@ I2CScan(ucMap);
 
 To detect if a single address is active, use I2CTest(addr).
 
+To identify the device, use I2CDiscoverDevice(uint8_t iAddress).
+
 For reading and writing data to the I2C device, use the following functions:
 
 I2CRead(uint8_t u8Address, uint8_t *pu8Data, int iLength);
 I2CReadRegister(uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen);
 I2CWrite(uint8_t iAddr, uint8_t *pData, int iLen); 
 
+There are currently 25 devices recognized by the discover function:
+  SSD1306, SH1106, VL53L0X, BMP180, BMP280, BME280, MPU6000, MPU9250, MCP9808, LSM6DS3,
+  ADXL345, ADS1115, MAX44009, MAG3110, CCS811, HTS221, LPS25H, LSM9DS1, LM8330, DS3231,
+  LIS3DH, LIS3DSH, INA219, SHT3X, HDC1080.
 
