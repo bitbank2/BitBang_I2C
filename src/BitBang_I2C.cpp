@@ -25,7 +25,7 @@
 
 static int iSCL, iSDA; // keep requested pin numbers in private statics
 static int iDelay; // bit delay in ms for the requested clock rate
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
 volatile uint8_t *iDDR_SCL, *iPort_SCL_Out;
 volatile uint8_t *iDDR_SDA, *iPort_SDA_In, *iPort_SDA_Out;
 uint8_t iSDABit, iSCLBit;
@@ -37,7 +37,7 @@ volatile uint32_t *iDDR_SDA, *iPort_SDA_In, *iPort_SDA_Out;
 uint32_t iSDABit, iSCLBit;
 #endif
 
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
 uint8_t getPinInfo(uint8_t pin, volatile uint8_t **iDDR, volatile uint8_t **iPort, int bInput)
 {
   uint8_t port, bit;
@@ -111,7 +111,7 @@ uint32_t getPinInfo(uint8_t pin, volatile uint32_t **iDDR, volatile uint32_t **i
 
 inline uint8_t SDA_READ(void)
 {
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSDA >= 0xa0) // direct pin numbering
   {
     if (*iPort_SDA_In & iSDABit)
@@ -129,7 +129,7 @@ inline uint8_t SDA_READ(void)
 }
 inline void SCL_HIGH(void)
 {
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSCL >= 0xa0) // direct pin numbering
   {
     *iDDR_SCL &= ~iSCLBit;
@@ -145,7 +145,7 @@ inline void SCL_HIGH(void)
 
 inline void SCL_LOW(void)
 {
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSCL >= 0xa0) // direct pin numbering
   {
     *iDDR_SCL |= iSCLBit;
@@ -161,7 +161,7 @@ inline void SCL_LOW(void)
 
 inline void SDA_HIGH(void)
 {
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSDA >= 0xa0) // direct pin numbering
   {
     *iDDR_SDA &= ~iSDABit;
@@ -177,7 +177,7 @@ inline void SDA_HIGH(void)
 
 inline void SDA_LOW(void)
 {
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSDA >= 0xa0) // direct pin numbering
   {
     *iDDR_SDA |= iSDABit;
@@ -238,7 +238,7 @@ uint8_t i, ack;
 } /* i2cByteOut() */
 #endif
 
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
 #define SDA_LOW_AVR *iDDR_sda |= sdabit;
 #define SDA_HIGH_AVR *iDDR_sda &= ~sdabit;
 #define SCL_LOW_AVR *iDDR_scl |= sclbit;
@@ -419,7 +419,7 @@ int rc, iOldLen = iLen;
 #ifdef __AVR_ATtiny85__
       rc = i2cByteOutAVRFast(b);
 #else
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
      if (iSDA >= 0xa0)
      {
         rc = i2cByteOutAVRFast(b);
@@ -474,7 +474,7 @@ void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock)
      digitalWrite(iSCL, LOW);
 #endif
    }
-#ifdef __AVR__
+#if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
    else // direct pin mode, get port address and bit
    {
 //      iSDABit = 1 << (iSDA & 0x7);
