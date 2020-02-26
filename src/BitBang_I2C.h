@@ -49,20 +49,29 @@ enum {
   DEVICE_HDC1080
 };
 
+typedef struct mybbi2c
+{
+uint8_t iSDA, iSCL; // pin numbers (0xff = disabled)
+uint8_t bWire; // use the Wire library
+uint8_t iSDABit, iSCLBit; // bit numbers of the ports
+uint32_t iDelay;
+volatile uint32_t *pSDADDR, *pSDAPORT; // data direction and port register addr
+volatile uint32_t *pSCLDDR, *pSCLPORT;
+} BBI2C;
 //
 // Read N bytes
 //
-int I2CRead(uint8_t iAddr, uint8_t *pData, int iLen);
+int I2CRead(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen);
 //
 // Read N bytes starting at a specific I2C internal register
 //
-int I2CReadRegister(uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen);
+int I2CReadRegister(BBI2C *pI2C, uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen);
 //
 // Write I2C data
 // quits if a NACK is received and returns 0
 // otherwise returns the number of bytes written
 //
-int I2CWrite(uint8_t iAddr, uint8_t *pData, int iLen);
+int I2CWrite(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen);
 //
 // Scans for I2C devices on the bus
 // returns a bitmap of devices which are present (128 bits = 16 bytes, LSB first)
@@ -70,22 +79,22 @@ int I2CWrite(uint8_t iAddr, uint8_t *pData, int iLen);
 // Test if an address responds
 // returns 0 if no response, 1 if it responds
 //
-uint8_t I2CTest(uint8_t addr);
+uint8_t I2CTest(BBI2C *pI2C, uint8_t addr);
 
 // A set bit indicates that a device responded at that address
 //
-void I2CScan(uint8_t *pMap);
+void I2CScan(BBI2C *pI2C, uint8_t *pMap);
 //
 // Initialize the I2C BitBang library
 // Pass the pin numbers used for SDA and SCL
 // as well as the clock rate in Hz
 //
-void I2CInit(int iSDA_Pin, int iSCL_Pin, int32_t iClock);
+void I2CInit(BBI2C *pI2C, uint32_t iClock);
 //
 // Figure out what device is at that address
 // returns the enumerated value
 //
-int I2CDiscoverDevice(uint8_t i);
+int I2CDiscoverDevice(BBI2C *pI2C, uint8_t i);
 
 #endif //__BITBANG_I2C__
 
