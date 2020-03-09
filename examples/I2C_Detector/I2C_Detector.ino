@@ -38,9 +38,11 @@
 
 // Arbitrary pins I used for testing with an ATmega328p
 // Define as -1, -1 to use the Wire library over the default I2C interface
-#define SDA_PIN -1
-#define SCL_PIN -1
-
+//#define SDA_PIN -1
+//#define SCL_PIN -1
+// M5Stack Atom Grove connector pin assignments
+#define SDA_PIN 32 
+#define SCL_PIN 26
 //
 // If you don't need the explicit device names displayed, disable this code by
 // commenting out the next line
@@ -53,9 +55,15 @@ const char *szNames[]  = {"Unknown","SSD1306","SH1106","VL53L0X","BMP180", "BMP2
                 "LIS3DSH","INA219","SHT3X","HDC1080"};
 #endif
 
+BBI2C bbi2c;
+
 void setup() {
-  Serial.begin(9600);
-  I2CInit(SDA_PIN, SCL_PIN, 100000L);
+  Serial.begin(115200);
+  memset(&bbi2c, 0, sizeof(bbi2c));
+  bbi2c.bWire = 0; // use bit bang, not wire library
+  bbi2c.iSDA = SDA_PIN;
+  bbi2c.iSCL = SCL_PIN;
+  I2CInit(&bbi2c, 100000L);
   delay(100); // allow devices to power up
 }
 
@@ -65,7 +73,7 @@ uint8_t i;
 int iDevice, iCount;
 
   Serial.println("Starting I2C Scan");
-  I2CScan(map); // get bitmap of connected I2C devices
+  I2CScan(&bbi2c, map); // get bitmap of connected I2C devices
   if (map[0] == 0xfe) // something is wrong with the I2C bus
   {
     Serial.println("I2C pins are not correct or the bus is being pulled low by a bad device; unable to run scan");
@@ -80,7 +88,7 @@ int iDevice, iCount;
         iCount++;
         Serial.print("Device found at 0x");
         Serial.print(i, HEX);
-        iDevice = I2CDiscoverDevice(i);
+        iDevice = I2CDiscoverDevice(&bbi2c, i);
         Serial.print(", type = ");
   #ifdef SHOW_NAME
         Serial.println(szNames[iDevice]); // show the device name as a string

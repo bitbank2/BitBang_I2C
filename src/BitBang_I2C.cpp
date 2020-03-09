@@ -560,7 +560,7 @@ uint8_t I2CTest(BBI2C *pI2C, uint8_t addr)
 {
 uint8_t response = 0;
 
-  if (pI2C->iSDA == -1 || pI2C->iSCL == -1)
+  if (pI2C->bWire)
   {
 #ifndef __AVR_ATtiny85__
   // We use the return value of
@@ -590,7 +590,7 @@ void I2CScan(BBI2C *pI2C, uint8_t *pMap)
     pMap[i] = 0;
   for (i=1; i<128; i++) // try every address
   {
-    if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff)
+    if (pI2C->bWire)
     {
 #ifndef __AVR_ATtiny85__
         // We use the return value of
@@ -620,7 +620,7 @@ int I2CWrite(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
 {
   int rc = 0;
   
-  if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff)
+  if (pI2C->bWire)
   {
 #ifndef __AVR_ATtiny85__
     Wire.beginTransmission(iAddr);
@@ -644,7 +644,7 @@ int I2CReadRegister(BBI2C *pI2C, uint8_t iAddr, uint8_t u8Register, uint8_t *pDa
 {
   int rc;
   
-  if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff) // use the wire library
+  if (pI2C->bWire) // use the wire library
   {
       int i = 0;
 #ifndef __AVR_ATtiny85__
@@ -683,7 +683,7 @@ int I2CRead(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
 {
   int rc;
   
-    if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff) // use the wire library
+    if (pI2C->bWire) // use the wire library
     {
         int i = 0;
 #ifndef __AVR_ATtiny85__
