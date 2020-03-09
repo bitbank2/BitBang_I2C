@@ -70,3 +70,8 @@ There are currently 25 devices recognized by the discover function:
   ADXL345, ADS1115, MAX44009, MAG3110, CCS811, HTS221, LPS25H, LSM9DS1, LM8330, DS3231,
   LIS3DH, LIS3DSH, INA219, SHT3X, HDC1080.
 
+If you find this code useful, please consider sending a donation.
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=SR4F44J2UR8S4)
+
+
