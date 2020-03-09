@@ -1,5 +1,6 @@
 Bit Bang I2C library
-Copyright (c) 2018-2019 BitBank Software, Inc.
+--------------------
+Copyright (c) 2018 BitBank Software, Inc.
 Written by Larry Bank (bitbank@pobox.com)
 Project started 10/12/2018
 
