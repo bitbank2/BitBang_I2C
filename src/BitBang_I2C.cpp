@@ -134,6 +134,7 @@ inline uint8_t SDA_READ(uint8_t iSDA)
 #endif
 #endif
   }
+  return 0; // fall through?
 }
 inline void SCL_HIGH(uint8_t iSCL)
 {
@@ -276,7 +277,7 @@ int iDelay = pI2C->iDelay;
 #define SCL_LOW_AVR *iDDR_scl |= sclbit;
 #define SCL_HIGH_AVR *iDDR_scl &= ~sclbit;
 #define SDA_READ_AVR (*iPort_SDA_In & sdabit)
-static inline int i2cByteOutAVR(uint8_t b)
+static inline int i2cByteOutAVR(BBI2C *pI2C, uint8_t b)
 {
 uint8_t i, ack;
 uint8_t *iDDR_sda = (uint8_t *)iDDR_SDA; // Put in local variables to avoid reading
@@ -291,7 +292,7 @@ uint8_t sclbit = iSCLBit;
          else
            SDA_LOW_AVR // set data line to 0
          SCL_HIGH_AVR // clock high (slave latches data)
-         sleep_us(iDelay);
+         sleep_us(pI2C->iDelay);
          SCL_LOW_AVR // clock low
          b <<= 1;
      } // for i
@@ -311,7 +312,7 @@ uint8_t sclbit = iSCLBit;
 #define SCL_HIGH_FAST *iDDR = scl_high; 
 #define SDA_HIGH_FAST *iDDR = sda_high;
 #define SDA_READ_FAST *iDDR & iSDABit;
-static inline int i2cByteOutAVRFast(uint8_t b)
+static inline int i2cByteOutAVRFast(BBI2C *pI2C, uint8_t b)
 {
 uint8_t i, ack;
 uint8_t *iDDR = (uint8_t *)iDDR_SDA; // Put in local variables to avoid reading
@@ -327,24 +328,24 @@ uint8_t sda_high = (bOld | iSCLBit) & ~iSDABit;
          if (b & 0x80)
          {
            SDA_HIGH_FAST // set data line to 1
-           sleep_us(iDelay);
+           sleep_us(pI2C->iDelay);
            BOTH_HIGH_FAST // rising edge clocks data
          }
          else // more probable case (0) = shortest code path
          {
            SCL_HIGH_FAST // clock high (slave latches data)
          }
-         sleep_us(iDelay);
+         sleep_us(pI2C->iDelay);
          BOTH_LOW_FAST // clock low
          b <<= 1;
      } // for i
 // read ack bit
   SDA_HIGH_FAST // set data line for reading
   BOTH_HIGH_FAST // clock line high
-  sleep_us(iDelay); // DEBUG - delay/2
+  sleep_us(pI2C->iDelay); // DEBUG - delay/2
   ack = SDA_READ_FAST;
   BOTH_LOW_FAST // clock low
-//  sleep_us(iDelay); // DEBUG - delay/2
+//  sleep_us(pI2C->iDelay); // DEBUG - delay/2
 //  SDA_LOW_AVR // data low
   return (ack == 0) ? 1:0; // a low ACK bit means success
 } /* i2cByteOutAVR() */
@@ -367,17 +368,17 @@ int iDelay;
      for (i=0; i<8; i++)
      {
          SCL_HIGH(iSCL); // clock high (slave latches data)
-         sleep_us(iDelay);
+         sleep_us(pI2C->iDelay);
          SCL_LOW(iSCL); // clock low
-         sleep_us(iDelay);
+         sleep_us(pI2C->iDelay);
      } // for i
 // read ack bit
   SDA_HIGH(iSDA); // set data line for reading
   SCL_HIGH(iSCL); // clock line high
-  sleep_us(iDelay); // DEBUG - delay/2
+  sleep_us(pI2C->iDelay); // DEBUG - delay/2
   ack = SDA_READ(iSDA);
   SCL_LOW(iSCL); // clock low
-  sleep_us(iDelay); // DEBUG - delay/2
+  sleep_us(pI2C->iDelay); // DEBUG - delay/2
   SDA_LOW(iSDA); // data low
   return (ack == 0) ? 1:0; // a low ACK bit means success
 } /* i2cByteOutFast() */
@@ -438,7 +439,7 @@ static inline int i2cBegin(BBI2C *pI2C, uint8_t addr, uint8_t bRead)
    if (bRead)
       addr++; // set read bit
 #ifdef __AVR_ATtiny85__
-   rc = i2cByteOutAVR(addr);
+   rc = i2cByteOutAVR(pI2C, addr);
 #else
    rc = i2cByteOut(pI2C, addr); // send the slave address and R/W bit
 #endif
@@ -455,12 +456,12 @@ int rc, iOldLen = iLen;
    {
       b = *pData++;
 #ifdef __AVR_ATtiny85__
-      rc = i2cByteOutAVRFast(b);
+      rc = i2cByteOutAVRFast(pI2C, b);
 #else
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
      if (iSDA >= 0xa0)
      {
-        rc = i2cByteOutAVRFast(b);
+        rc = i2cByteOutAVRFast(pI2C, b);
      }
      else
 #endif
