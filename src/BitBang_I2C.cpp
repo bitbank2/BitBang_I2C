@@ -368,9 +368,9 @@ int iDelay;
      for (i=0; i<8; i++)
      {
          SCL_HIGH(iSCL); // clock high (slave latches data)
-         sleep_us(pI2C->iDelay);
+         sleep_us(iDelay);
          SCL_LOW(iSCL); // clock low
-         sleep_us(pI2C->iDelay);
+         sleep_us(iDelay);
      } // for i
 // read ack bit
   SDA_HIGH(iSDA); // set data line for reading
@@ -459,7 +459,7 @@ int rc, iOldLen = iLen;
       rc = i2cByteOutAVRFast(pI2C, b);
 #else
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
-     if (iSDA >= 0xa0)
+     if (pI2C->iSDA >= 0xa0)
      {
         rc = i2cByteOutAVRFast(pI2C, b);
      }
@@ -499,10 +499,14 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
    if (pI2C->bWire) // use Wire library
    {
 #ifndef __AVR_ATtiny85__
+#ifdef __AVR__
+       Wire.begin();
+#else
        if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff)
           Wire.begin();
        else
           Wire.begin(pI2C->iSDA, pI2C->iSCL);
+#endif
        Wire.setClock(iClock);
 #endif
        return;
