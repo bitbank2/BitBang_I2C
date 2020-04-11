@@ -157,7 +157,7 @@ inline uint8_t SDA_READ(uint8_t iSDA)
     return w600DigitalRead(iSDA);
 #else
 #ifdef _LINUX_
-    return gpioRead(iRPIPins[iSDA]);
+    return gpioRead(iSDA);
 #else
     return digitalRead(iSDA);
 #endif // _LINUX
@@ -181,7 +181,7 @@ inline void SCL_HIGH(uint8_t iSCL)
     w600PinMode(iSCL, GPIO_INPUT);
 #else
 #ifdef _LINUX_
-    gpioSetMode(iRPIPins[iSCL], PI_INPUT);
+    gpioSetMode(iSCL, PI_INPUT);
 #else
     pinMode(iSCL, INPUT);
 #endif // _LINUX_
@@ -206,7 +206,7 @@ inline void SCL_LOW(uint8_t iSCL)
     w600DigitalWrite(iSCL, LOW);
 #else
 #ifdef _LINUX_
-    gpioSetMode(iRPIPins[iSCL], PI_OUTPUT);
+    gpioSetMode(iSCL, PI_OUTPUT);
 #else
     pinMode(iSCL, OUTPUT);
 #endif // _LINUX_
@@ -230,7 +230,7 @@ inline void SDA_HIGH(uint8_t iSDA)
     w600PinMode(iSDA, GPIO_INPUT);
 #else
 #ifdef _LINUX_
-    gpioSetMode(iRPIPins[iSDA], PI_INPUT);
+    gpioSetMode(iSDA, PI_INPUT);
 #else
     pinMode(iSDA, INPUT);
 #endif // _LINUX_
@@ -255,7 +255,7 @@ inline void SDA_LOW(uint8_t iSDA)
     w600DigitalWrite(iSDA, LOW);
 #else
 #ifdef _LINUX_
-    gpioSetMode(iRPIPins[iSDA], PI_OUTPUT);
+    gpioSetMode(iSDA, PI_OUTPUT);
 #else
     pinMode(iSDA, OUTPUT);
 #endif // _LINUX_
@@ -278,12 +278,7 @@ void inline sleep_us(int iDelay)
 #else
   if (iDelay > 0)
 #ifdef _LINUX_
-  {
-    struct timespec ts;
-      ts.tv_sec = 0;
-      ts.tv_nsec = iDelay * 1000LL;
-      nanosleep(&ts, NULL);
-  }
+     gpioDelay(iDelay);
 #else
      delayMicroseconds(iDelay);
 #endif // _LINUX
@@ -602,12 +597,15 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
 #endif
 #ifdef _LINUX_
      // use PIGPIO
-     gpioWrite(iRPIPins[pI2C->iSDA], 0);
-     gpioWrite(iRPIPins[pI2C->iSCL], 0);
-     gpioSetMode(iRPIPins[pI2C->iSDA], PI_INPUT);
-     gpioSetPullUpDown(iRPIPins[pI2C->iSDA], PI_PUD_UP);
-     gpioSetMode(iRPIPins[pI2C->iSCL], PI_INPUT);
-     gpioSetPullUpDown(iRPIPins[pI2C->iSCL], PI_PUD_UP);
+     // convert pin numbers to BCM numbers for PIGPIO
+     pI2C->iSDA = iRPIPins[pI2C->iSDA];
+     pI2C->iSCL = iRPIPins[pI2C->iSCL];
+     gpioWrite(pI2C->iSDA, 0);
+     gpioWrite(pI2C->iSCL, 0);
+     gpioSetMode(pI2C->iSDA, PI_INPUT);
+//     gpioSetPullUpDown(pI2C->iSDA, PI_PUD_UP);
+     gpioSetMode(pI2C->iSCL, PI_INPUT);
+//     gpioSetPullUpDown(pI2C->iSCL, PI_PUD_UP);
 #endif // _LINUX_
    }
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
@@ -626,6 +624,10 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
 #endif // __AVR__
   // For now, we only support 100, 400 or 800K clock rates
   // all other values default to 100K
+#ifdef _LINUX_
+   pI2C->iDelay = 1000000 / iClock;
+   if (pI2C->iDelay < 1) pI2C->iDelay = 1;
+#else
    if (iClock >= 1000000)
       pI2C->iDelay = 0; // the code execution is enough delay
    else if (iClock >= 800000)
@@ -635,6 +637,7 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
    else if (iClock >= 100000)
       pI2C->iDelay = 10;
    else pI2C->iDelay = (uint16_t)(1000000 / iClock);
+#endif // _LINUX_
 } /* i2cInit() */
 //
 // Test a specific I2C address to see if a device responds
