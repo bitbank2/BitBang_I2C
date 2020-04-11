@@ -55,8 +55,13 @@ uint8_t iSDA, iSCL; // pin numbers (0xff = disabled)
 uint8_t bWire; // use the Wire library
 uint8_t iSDABit, iSCLBit; // bit numbers of the ports
 uint32_t iDelay;
+#ifdef _LINUX_
+int file_i2c;
+int iBus;
+#else
 volatile uint32_t *pSDADDR, *pSDAPORT; // data direction and port register addr
 volatile uint32_t *pSCLDDR, *pSCLPORT;
+#endif
 } BBI2C;
 //
 // Read N bytes

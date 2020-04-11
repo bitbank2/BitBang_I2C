@@ -17,8 +17,33 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
+#ifdef _LINUX_
+#include <stdint.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/i2c-dev.h>
+#include <math.h>
+#include <pigpio.h>
+#define PROGMEM
+#define false 0
+#define true 1
+#define memcpy_P memcpy
+#define INPUT 1
+#define OUTPUT 2
+
+// maps RPI pins to BCM GPIO numbers
+const int iRPIPins[] = {-1,-1,-1,2,-1,3,-1,4,14,-1,
+                        15,17,18,27,-1,22,23,-1,24,10,
+                        -1,9,25,11,8,-1,7,0,1,5,
+                        -1,6,12,13,-1,19,16,26,20,-1,
+                        21};
+
+#else // Arduino
 #include <Arduino.h>
-#include <BitBang_I2C.h>
 #ifndef __AVR_ATtiny85__
 #include <Wire.h>
 #endif
@@ -26,7 +51,8 @@
 #include <W600FastIO.h>
 #define VARIANT_MCK 80000000ul
 #endif
-
+#endif // _LINUX_
+#include <BitBang_I2C.h>
 //static int iSCL, iSDA; // keep requested pin numbers in private statics
 //static int iDelay; // bit delay in ms for the requested clock rate
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
@@ -130,7 +156,11 @@ inline uint8_t SDA_READ(uint8_t iSDA)
 #ifdef W600_EV
     return w600DigitalRead(iSDA);
 #else
+#ifdef _LINUX_
+    return gpioRead(iRPIPins[iSDA]);
+#else
     return digitalRead(iSDA);
+#endif // _LINUX
 #endif
 #endif
   }
@@ -150,7 +180,11 @@ inline void SCL_HIGH(uint8_t iSCL)
 #ifdef W600_EV
     w600PinMode(iSCL, GPIO_INPUT);
 #else
+#ifdef _LINUX_
+    gpioSetMode(iRPIPins[iSCL], PI_INPUT);
+#else
     pinMode(iSCL, INPUT);
+#endif // _LINUX_
 #endif
 #endif
   }
@@ -171,7 +205,11 @@ inline void SCL_LOW(uint8_t iSCL)
     w600PinMode(iSCL, GPIO_OUTPUT);
     w600DigitalWrite(iSCL, LOW);
 #else
+#ifdef _LINUX_
+    gpioSetMode(iRPIPins[iSCL], PI_OUTPUT);
+#else
     pinMode(iSCL, OUTPUT);
+#endif // _LINUX_
 #endif
 #endif
   }
@@ -191,7 +229,11 @@ inline void SDA_HIGH(uint8_t iSDA)
 #ifdef W600_EV
     w600PinMode(iSDA, GPIO_INPUT);
 #else
+#ifdef _LINUX_
+    gpioSetMode(iRPIPins[iSDA], PI_INPUT);
+#else
     pinMode(iSDA, INPUT);
+#endif // _LINUX_
 #endif
 #endif
   }
@@ -212,7 +254,11 @@ inline void SDA_LOW(uint8_t iSDA)
     w600PinMode(iSDA, GPIO_OUTPUT);
     w600DigitalWrite(iSDA, LOW);
 #else
+#ifdef _LINUX_
+    gpioSetMode(iRPIPins[iSDA], PI_OUTPUT);
+#else
     pinMode(iSDA, OUTPUT);
+#endif // _LINUX_
 #endif
 #endif
   }
@@ -231,7 +277,16 @@ void inline sleep_us(int iDelay)
   }
 #else
   if (iDelay > 0)
+#ifdef _LINUX_
+  {
+    struct timespec ts;
+      ts.tv_sec = 0;
+      ts.tv_nsec = iDelay * 1000LL;
+      nanosleep(&ts, NULL);
+  }
+#else
      delayMicroseconds(iDelay);
+#endif // _LINUX
 #endif
 }
 #ifndef __AVR_ATtiny85__
@@ -494,11 +549,18 @@ static inline void i2cRead(BBI2C *pI2C, uint8_t *pData, int iLen)
 //
 void I2CInit(BBI2C *pI2C, uint32_t iClock)
 {
+#ifdef _LINUX_
+   if (gpioInitialise() < 0)
+   {
+      printf("pigpio failed to initialize\n");
+      return;
+   }
+#endif
    if (pI2C == NULL) return;
 
    if (pI2C->bWire) // use Wire library
    {
-#ifndef __AVR_ATtiny85__
+#if !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
 #if defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 )
        Wire.begin();
 #else
@@ -509,11 +571,19 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
 #endif
        Wire.setClock(iClock);
 #endif
+#ifdef _LINUX_
+       {
+           char filename[32];
+           sprintf(filename, "/dev/i2c-%d", pI2C->iBus);
+           if ((pI2C->file_i2c = open(filename, O_RDWR)) < 0)
+                 return;
+       }
+#endif // _LINUX_
        return;
    }
    if (pI2C->iSDA < 0xa0)
    {
-#ifndef __AVR_ATtiny85__
+#if !defined ( __AVR_ATtiny85__ ) && !defined( _LINUX_ )
 #ifdef W600_EV
      w600PinMode(pI2C->iSDA, GPIO_OUTPUT);
      w600PinMode(pI2C->iSCL, GPIO_OUTPUT);
@@ -530,6 +600,15 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
      pinMode(pI2C->iSCL, INPUT);
 #endif
 #endif
+#ifdef _LINUX_
+     // use PIGPIO
+     gpioWrite(iRPIPins[pI2C->iSDA], 0);
+     gpioWrite(iRPIPins[pI2C->iSCL], 0);
+     gpioSetMode(iRPIPins[pI2C->iSDA], PI_INPUT);
+     gpioSetPullUpDown(iRPIPins[pI2C->iSDA], PI_PUD_UP);
+     gpioSetMode(iRPIPins[pI2C->iSCL], PI_INPUT);
+     gpioSetPullUpDown(iRPIPins[pI2C->iSCL], PI_PUD_UP);
+#endif // _LINUX_
    }
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
    else // direct pin mode, get port address and bit
@@ -567,12 +646,16 @@ uint8_t response = 0;
 
   if (pI2C->bWire)
   {
-#ifndef __AVR_ATtiny85__
+#if !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
   // We use the return value of
   // the Write.endTransmisstion to see if
   // a device did acknowledge to the address.
   Wire.beginTransmission(addr);
   response = !Wire.endTransmission();
+#endif
+#ifdef _LINUX_
+    if (ioctl(pI2C->file_i2c, I2C_SLAVE, addr) >= 0)
+        response = 1;
 #endif
     return response;
   }
@@ -595,24 +678,9 @@ void I2CScan(BBI2C *pI2C, uint8_t *pMap)
     pMap[i] = 0;
   for (i=1; i<128; i++) // try every address
   {
-    if (pI2C->bWire)
+    if (I2CTest(pI2C, i))
     {
-#ifndef __AVR_ATtiny85__
-        // We use the return value of
-        // the Write.endTransmisstion to see if
-        // a device did acknowledge to the address.
-        Wire.beginTransmission(i);
-        if (!Wire.endTransmission())
-            pMap[i>>3] |= (1 << (i & 7));
-#endif
-    }
-    else
-    {
-      if (i2cBegin(pI2C, i, 0)) // try to write to every device
-      {
-        pMap[i >> 3] |= (1 << (i & 7));
-      }
-      i2cEnd(pI2C);
+      pMap[i >> 3] |= (1 << (i & 7));
     }
   }
 } /* I2CScan() */
@@ -627,11 +695,18 @@ int I2CWrite(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
   
   if (pI2C->bWire)
   {
-#ifndef __AVR_ATtiny85__
+#if !defined ( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
     Wire.beginTransmission(iAddr);
     Wire.write(pData, (uint8_t)iLen);
     rc = !Wire.endTransmission();
 #endif
+#ifdef _LINUX_
+    if (ioctl(pI2C->file_i2c, I2C_SLAVE, iAddr) >= 0)
+    {
+       if (write(pI2C->file_i2c, pData, iLen) >= 0)
+          rc = 1;
+    } 
+#endif // _LINUX_
     return rc;
   }
   rc = i2cBegin(pI2C, iAddr, 0);
@@ -652,7 +727,7 @@ int I2CReadRegister(BBI2C *pI2C, uint8_t iAddr, uint8_t u8Register, uint8_t *pDa
   if (pI2C->bWire) // use the wire library
   {
       int i = 0;
-#ifndef __AVR_ATtiny85__
+#if !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
       Wire.beginTransmission(iAddr);
       Wire.write(u8Register);
       Wire.endTransmission();
@@ -662,6 +737,13 @@ int I2CReadRegister(BBI2C *pI2C, uint8_t iAddr, uint8_t u8Register, uint8_t *pDa
           pData[i++] = Wire.read();
       }
 #endif
+#ifdef _LINUX_
+    if (ioctl(pI2C->file_i2c, I2C_SLAVE, iAddr) >= 0)
+    {
+       write(pI2C->file_i2c, &u8Register, 1);
+       i = read(pI2C->file_i2c, pData, iLen);
+    } 
+#endif // _LINUX_
       return (i > 0);
   }
   rc = i2cBegin(pI2C, iAddr, 0); // start a write operation
@@ -691,13 +773,19 @@ int I2CRead(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
     if (pI2C->bWire) // use the wire library
     {
         int i = 0;
-#ifndef __AVR_ATtiny85__
+#if !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
         Wire.requestFrom(iAddr, (uint8_t)iLen);
         while (i < iLen)
         {
             pData[i++] = Wire.read();
         }
 #endif
+#ifdef _LINUX_
+    if (ioctl(pI2C->file_i2c, I2C_SLAVE, iAddr) >= 0)
+    {
+       i = read(pI2C->file_i2c, pData, iLen);
+    } 
+#endif // _LINUX_
         return (i > 0);
     }
   rc = i2cBegin(pI2C, iAddr, 1);
