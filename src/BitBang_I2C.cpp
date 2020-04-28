@@ -921,12 +921,14 @@ int iDevice = DEVICE_UNKNOWN;
     if (cTemp[0] == 0xe5)
        return DEVICE_ADXL345;
        
-    // Check for MPU-60x0 and MPU-9250
+    // Check for MPU-60x0i, MPU-688x, and MPU-9250
     I2CReadRegister(pI2C, i, 0x75, cTemp, 1);
     if (cTemp[0] == (i & 0xfe)) // Current I2C address (low bit set to 0)
        return DEVICE_MPU6000;
     else if (cTemp[0] == 0x71)
        return DEVICE_MPU9250;
+    else if (cTemp[0] == 0x19)
+       return DEVICE_MPU6886;
 
     // Check for DS3231 RTC
     I2CReadRegister(pI2C, i, 0x0e, cTemp, 1); // read the control register
