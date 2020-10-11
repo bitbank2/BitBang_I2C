@@ -836,6 +836,13 @@ int iDevice = DEVICE_UNKNOWN;
     if (cTemp[0] == 0x10 && cTemp[1] == 0x50)
        return DEVICE_HDC1080;
 
+    // Check for BME680
+    if (i == 0x76 || i == 0x77)
+    {
+       I2CReadRegister(pI2C, i, 0xd0, cTemp, 1); // chip ID
+       if (cTemp[0] == 0x61) // BME680
+          return DEVICE_BME680;
+    }
     // Check for VL53L0X
     I2CReadRegister(pI2C, i, 0xc0, cTemp, 3);
     if (cTemp[0] == 0xee && cTemp[1] == 0xaa && cTemp[2] == 0x10)

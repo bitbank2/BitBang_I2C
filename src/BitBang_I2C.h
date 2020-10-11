@@ -47,7 +47,8 @@ enum {
   DEVICE_INA219,
   DEVICE_SHT3X,
   DEVICE_HDC1080,
-  DEVICE_MPU6886
+  DEVICE_MPU6886,
+  DEVICE_BME680
 };
 
 typedef struct mybbi2c
