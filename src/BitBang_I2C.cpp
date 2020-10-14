@@ -831,6 +831,13 @@ int iDevice = DEVICE_UNKNOWN;
 //  }
   // try to identify it from the known devices using register contents
   {
+    // Check for AXP202 / AXP192
+    I2CReadRegister(pI2C, i, 0x03, cTemp, 1); // chip ID
+    if (cTemp[0] == 0x41)
+       return DEVICE_AXP202;
+    else if (cTemp[0] == 0x03)
+       return DEVICE_AXP192;
+    
     // Check for TI HDC1080
     I2CReadRegister(pI2C, i, 0xff, cTemp, 2);
     if (cTemp[0] == 0x10 && cTemp[1] == 0x50)
