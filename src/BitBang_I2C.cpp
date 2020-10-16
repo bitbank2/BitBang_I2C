@@ -834,6 +834,17 @@ int iDevice = DEVICE_UNKNOWN;
     if (cTemp[0] == 0x39 && cTemp[1] == 0x9f)
        return DEVICE_INA219;
   }
+  
+  // Check for Microchip 24AAXXXE64 family serial 2 Kbit EEPROM
+  if (i >= 0x50 && i <= 0x57) {
+    static int oui1[3] = {0x00, 0x04, 0xa3}, oui2[3] = {0x00, 0x1e, 0xc0},
+               oui3[3] = {0xd8, 0x80, 0x39}, oui4[3] = {0x54, 0x10, 0xec};
+    I2CReadRegister(pI2C, i, 0xf8, &cTemp[3], 3); // check for Microchip's OUI
+    if (memcmp(cTemp, oui1, 3) || memcmp(cTemp, oui2, 3) ||
+        memcmp(cTemp, oui3, 3) || memcmp(cTemp, oui4, 3))
+      return DEVICE_24AAXXXE64;
+  }
+  
 //  else if (i == 0x5b) // MLX90615?
 //  {
 //    I2CReadRegister(pI2C, i, 0x10, cTemp, 3);
