@@ -834,6 +834,17 @@ int iDevice = DEVICE_UNKNOWN;
     if (cTemp[0] == 0x39 && cTemp[1] == 0x9f)
        return DEVICE_INA219;
   }
+  
+  // Check for Microchip 24AAXXXE64 family serial 2 Kbit EEPROM
+  if (i >= 0x50 && i <= 0x57) {
+    uint32_t u32Temp = 0;
+    I2CReadRegister(pI2C, i, 0xf8, (uint8_t *)&u32Temp,
+                    3); // check for Microchip's OUI
+    if (u32Temp == 0x000004a3 || u32Temp == 0x00001ec0 ||
+        u32Temp == 0x00d88039 || u32Temp == 0x005410ec)
+      return DEVICE_24AAXXXE64;
+  }
+  
 //  else if (i == 0x5b) // MLX90615?
 //  {
 //    I2CReadRegister(pI2C, i, 0x10, cTemp, 3);
@@ -947,10 +958,13 @@ int iDevice = DEVICE_UNKNOWN;
     else if (cTemp[0] == 0x19)
        return DEVICE_MPU6886;
 
-    // Check for DS3231 RTC
+    // Check for DS3231 and DS1307 RTC
     I2CReadRegister(pI2C, i, 0x0e, cTemp, 1); // read the control register
     if (i == 0x68 && cTemp[0] == 0x1c) // fixed I2C address and power on reset value  
        return DEVICE_DS3231;
+    else if (i == 0x68 && cTemp[0] == 0x03) // fixed I2C address and power on reset value  
+       return DEVICE_DS1307;
+        
   }
   return iDevice;
 } /* I2CDiscoverDevice() */
