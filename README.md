@@ -65,9 +65,9 @@ I2CRead(uint8_t u8Address, uint8_t *pu8Data, int iLength);<br>
 I2CReadRegister(uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen);<br>
 I2CWrite(uint8_t iAddr, uint8_t *pData, int iLen); <br>
 <br>
-There are currently 28 devices recognized by the discover function:
+There are currently 29 devices recognized by the discover function:
   SSD1306, SH1106, VL53L0X, BMP180, BMP280, BME280, BME680, MPU6000, MPU9250, MCP9808, LSM6DS3,
-  ADXL345, ADS1115, MAX44009, MAG3110, CCS811, HTS221, LPS25H, LSM9DS1, LM8330, DS3231,
+  ADXL345, ADS1115, MAX44009, MAG3110, CCS811, HTS221, LPS25H, LSM9DS1, LM8330, DS3231, DS1307,
   LIS3DH, LIS3DSH, INA219, SHT3X, HDC1080, AXP192, AXP202, 24AAXXXE64.
 
 If you find this code useful, please consider sending a donation.
