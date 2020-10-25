@@ -958,12 +958,17 @@ int iDevice = DEVICE_UNKNOWN;
     else if (cTemp[0] == 0x19)
        return DEVICE_MPU6886;
 
-    // Check for DS3231 and DS1307 RTC
+    // Check for DS3231 RTC
     I2CReadRegister(pI2C, i, 0x0e, cTemp, 1); // read the control register
-    if (i == 0x68 && cTemp[0] == 0x1c) // fixed I2C address and power on reset value  
-       return DEVICE_DS3231;
-    else if (i == 0x68 && cTemp[0] == 0x03) // fixed I2C address and power on reset value  
-       return DEVICE_DS1307;
+    if (i == 0x68 &&
+        cTemp[0] == 0x1c) // fixed I2C address and power on reset value
+      return DEVICE_DS3231;
+
+    // Check for DS1307 RTC
+    I2CReadRegister(pI2C, i, 0x07, cTemp, 1); // read the control register
+    if (i == 0x68 &&
+        cTemp[0] == 0x03) // fixed I2C address and power on reset value
+      return DEVICE_DS1307;
         
   }
   return iDevice;
