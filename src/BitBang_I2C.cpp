@@ -556,7 +556,7 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
    if (pI2C->bWire) // use Wire library
    {
 #if !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
-#if defined(TEENSYDUINO) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 )
+#if defined(TEENSYDUINO) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_SAM)
        Wire.begin();
 #else
        if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff)
