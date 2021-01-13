@@ -61,9 +61,9 @@ To identify the device, use I2CDiscoverDevice(uint8_t iAddress).<br>
 <br>
 For reading and writing data to the I2C device, use the following functions:<br>
 <br>
-I2CRead(uint8_t u8Address, uint8_t *pu8Data, int iLength);<br>
-I2CReadRegister(uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen);<br>
-I2CWrite(uint8_t iAddr, uint8_t *pData, int iLen); <br>
+I2CRead(&bbi2c, uint8_t u8Address, uint8_t *pu8Data, int iLength);<br>
+I2CReadRegister(&bbi2c, uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen);<br>
+I2CWrite(&bbi2c, uint8_t iAddr, uint8_t *pData, int iLen); <br>
 <br>
 There are currently 29 devices recognized by the discover function:
   SSD1306, SH1106, VL53L0X, BMP180, BMP280, BME280, BME680, MPU6000, MPU9250, MCP9808, LSM6DS3,
