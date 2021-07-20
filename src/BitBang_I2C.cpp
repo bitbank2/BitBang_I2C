@@ -827,6 +827,19 @@ int iDevice = DEVICE_UNKNOWN;
     else if (cTemp[0] == 0x03)
        return DEVICE_AXP192;
   }
+ 
+  if (i == 0x38)  // Probably a FT6236G/FT6336G/FT6336U/FT6436 touch screen controller chip
+  {               //  - likely 0x39 address valid as well but no test HW to verify
+    I2CReadRegister(pI2C, i, 0xA0, cTemp, 1); // chip ID
+    if (cTemp[0] == 0x00)
+       return DEVICE_FT6236G;
+    else if (cTemp[0] == 0x01)
+       return DEVICE_FT6336G;
+      else if (cTemp[0] == 0x02)
+       return DEVICE_FT6336U;
+      else if (cTemp[0] == 0x03)
+       return DEVICE_FT6436;
+  }
   
   if (i >= 0x40 && i <= 0x4f) // check for TI INA219 power measurement sensor
   {
@@ -844,7 +857,29 @@ int iDevice = DEVICE_UNKNOWN;
         u32Temp == 0x00d88039 || u32Temp == 0x005410ec)
       return DEVICE_24AAXXXE64;
   }
-  
+
+  if (i == 0x51)  // Probably a BM8563 RTC
+  {               
+    I2CReadRegister(pI2C, i, 0x00, cTemp, 1); // Command/Status register 1
+    // Serial.print("CSR1REG(0x00): ");
+    // Serial.println(cTemp[0], HEX);
+    if ((cTemp[0] & 0xDF) == 0x00)    // all bits clear in Normal, ignore BIT5(STOP)
+    {
+      I2CReadRegister(pI2C, i, 0x01, cTemp, 1); // Command/Status register 2
+      // Serial.print("CSR2REG(0x01): ");
+      // Serial.println(cTemp[0], HEX);
+      if ((cTemp[0] & 0xE0) == 0x00)          // BIT5-7 always clear
+      {
+        I2CReadRegister(pI2C, i, 0x02, cTemp, 1); // seconds register 
+        // Serial.print("SECREG(0x02):     ");
+        // Serial.println(cTemp[0], HEX);   
+        if ((cTemp[0] & 0x80) == 0x00)        // BIT7(VL) clear if PWRON    
+          return DEVICE_BM8563;
+      }
+    }
+  }
+
+
 //  else if (i == 0x5b) // MLX90615?
 //  {
 //    I2CReadRegister(pI2C, i, 0x10, cTemp, 3);
@@ -948,15 +983,24 @@ int iDevice = DEVICE_UNKNOWN;
     I2CReadRegister(pI2C, i, 0x00, cTemp, 1); // DEVID
     if (cTemp[0] == 0xe5)
        return DEVICE_ADXL345;
-       
-    // Check for MPU-60x0i, MPU-688x, and MPU-9250
+
+    // Check for MPU-6886
+    if (i == 0x68 || i == 0x69)
+    { 
+      I2CReadRegister(pI2C, i, 0x75, cTemp, 1);   // WHO_AM_I
+      if (cTemp[0] == 0x19)
+        return DEVICE_MPU6886;
+    }
+
+    // Check for MPU-60x0i, MPU-688X (not MPU-6886) and MPU-9250
     I2CReadRegister(pI2C, i, 0x75, cTemp, 1);
     if (cTemp[0] == (i & 0xfe)) // Current I2C address (low bit set to 0)
        return DEVICE_MPU6000;
     else if (cTemp[0] == 0x71)
        return DEVICE_MPU9250;
     else if (cTemp[0] == 0x19)
-       return DEVICE_MPU6886;
+        return DEVICE_MPU688X;
+
 
     // Check for DS3231 RTC
     I2CReadRegister(pI2C, i, 0x0e, cTemp, 1); // read the control register
