@@ -556,7 +556,7 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
    if (pI2C->bWire) // use Wire library
    {
 #if !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
-#if defined(TEENSYDUINO) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_SAM)
+#if defined(TEENSYDUINO) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_NRF52) || defined(ARDUINO_ARCH_SAM)
        Wire.begin();
 #else
        if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff)
@@ -808,6 +808,12 @@ int I2CDiscoverDevice(BBI2C *pI2C, uint8_t i)
 uint8_t j, cTemp[8];
 int iDevice = DEVICE_UNKNOWN;
 
+  if (i == 0x28 || i == 0x29) // Probably a Bosch BNO055
+  {
+    I2CReadRegister(pI2C, i, 0x00, cTemp, 1); // CHIP_ID register
+    if (cTemp[0] == 0xa0)
+       return DEVICE_BNO055;
+  }
   if (i == 0x3c || i == 0x3d) // Probably an OLED display
   {
     I2CReadRegister(pI2C, i, 0x00, cTemp, 1);

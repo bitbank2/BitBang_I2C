@@ -58,7 +58,8 @@ enum {
   DEVICE_FT6336G,
   DEVICE_FT6336U,
   DEVICE_FT6436,
-  DEVICE_BM8563
+  DEVICE_BM8563,
+  DEVICE_BNO055
 };
 
 typedef struct mybbi2c
