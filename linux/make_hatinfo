@@ -1,0 +1,13 @@
+CFLAGS=-c -Wall -O2
+LIBS = -lBitBang_I2C -lpigpio
+
+all: hatinfo
+
+hatinfo: hatinfo.o
+	$(CC) hatinfo.o $(LIBS) -o hatinfo
+
+hatinfo.o: hatinfo.c
+	$(CC) $(CFLAGS) hatinfo.c
+
+clean:
+	rm *.o hatinfo
