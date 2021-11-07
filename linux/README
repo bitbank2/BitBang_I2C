@@ -1,0 +1,16 @@
+BitBang_I2C Linux support
+-------------------------
+The Linux version will compile a C static library (unlike Arduino C++). If you
+require a C++ interface, you can just change the makefile to compile it as such.
+
+To build the library, just run make.
+The I2C_Detector example is also included for Linux. To build it type:
+> make -f make_sample
+Since this uses the PIGPIO library to access the GPIO pins, it must be run as
+sudo. The numbers used for the SCL and SDA pins are the header pin numbers, not
+the BCM GPIO numbers. For example, to see if a RPI "HAT" EEPROM is present on
+i2c-0, you would run it like this:
+> sudo i2c_detect 27 28
+This creates a software i2c bus on header pins 27/28 (BCM GPIO 0/1). If a HAT
+is present, it will show a device detected at address 0x50.
+

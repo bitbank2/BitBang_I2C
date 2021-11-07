@@ -1,0 +1,13 @@
+CFLAGS=-c -Wall -O2
+LIBS = -lBitBang_I2C -lpigpio
+
+all: i2c_detect
+
+i2c_detect: main.o
+	$(CC) main.o $(LIBS) -o i2c_detect
+
+main.o: main.c
+	$(CC) $(CFLAGS) main.c
+
+clean:
+	rm *.o i2c_detect
