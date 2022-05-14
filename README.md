@@ -4,8 +4,9 @@ Copyright (c) 2018 BitBank Software, Inc.
 Written by Larry Bank (bitbank@pobox.com)
 Project started 10/12/2018
 
-The purpose of this code is to provide a simple C library which can bit-bang
-the I2C protocol on any 2 GPIO pins on any system. The I2C protocol doesn't
+The purpose of this code is to provide a simple C library which can manage I2c
+in a consistent way across different platforms, in addition to providing
+software bit-bang of the protocol on any 2 GPIO pins. The I2C protocol doesn't
 require any special functionality of the pins beyond standard GPIO features.
 The reason I wrote it was for getting easy access to I2C devices on
 various microcontrollers that don't necessarily have exposed I2C interfaces.

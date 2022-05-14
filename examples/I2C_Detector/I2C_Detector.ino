@@ -38,8 +38,8 @@
 
 // Arbitrary pins I used for testing with an ATmega328p
 // Define as -1, -1 to use the Wire library over the default I2C interface
-//#define SDA_PIN -1
-//#define SCL_PIN -1
+#define SDA_PIN 13
+#define SCL_PIN 14
 // M5Stack Atom Grove connector pin assignments
 //#define SDA_PIN 32 
 //#define SCL_PIN 26
@@ -47,8 +47,8 @@
 //#define SDA_PIN 25
 //#define SCL_PIN 21
 // M5Stack Core2 internal I2C
-#define SDA_PIN 21
-#define SCL_PIN 22
+//#define SDA_PIN 21
+//#define SCL_PIN 22
 //
 // If you don't need the explicit device names displayed, disable this code by
 // commenting out the next line
@@ -66,8 +66,10 @@ BBI2C bbi2c;
 
 void setup() {
   Serial.begin(115200);
+  while (!Serial) {};
+  Serial.println("I2C Scan Demo");
   memset(&bbi2c, 0, sizeof(bbi2c));
-  bbi2c.bWire = 0; // use bit bang, not wire library
+  bbi2c.bWire = 1; // use bit bang, not wire library
   bbi2c.iSDA = SDA_PIN;
   bbi2c.iSCL = SCL_PIN;
   I2CInit(&bbi2c, 100000L);
