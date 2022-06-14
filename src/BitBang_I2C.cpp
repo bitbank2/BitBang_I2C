@@ -44,6 +44,8 @@ const int iRPIPins[] = {-1,-1,-1,2,-1,3,-1,4,14,-1,
 
 #else // Arduino
 #include <Arduino.h>
+static uint8_t iSDAState = 1;
+
 #ifndef __AVR_ATtiny85__
 #include <Wire.h>
 #ifdef DARDUINO_ARCH_MBED 
@@ -242,7 +244,10 @@ inline void SDA_HIGH(uint8_t iSDA)
 #ifdef _LINUX_
     gpioSetMode(iSDA, PI_INPUT);
 #else
-    pinMode(iSDA, INPUT);
+    if (iSDAState == 0) {
+      pinMode(iSDA, INPUT);
+      iSDAState = 1;
+    }
 #endif // _LINUX_
 #endif
 #endif
@@ -267,7 +272,10 @@ inline void SDA_LOW(uint8_t iSDA)
 #ifdef _LINUX_
     gpioSetMode(iSDA, PI_OUTPUT);
 #else
-    pinMode(iSDA, OUTPUT);
+    if (iSDAState != 0) {
+      pinMode(iSDA, OUTPUT);
+      iSDAState = 0; // eliminate glitches
+    }
 #endif // _LINUX_
 #endif
 #endif
@@ -591,6 +599,7 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
        }
 #endif
        pWire->setClock(iClock);
+//       pWire->setTimeout(20000L); // set a timeout of 20ms
 #endif
 #ifdef _LINUX_
        {
@@ -748,6 +757,7 @@ int I2CWrite(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
 } /* I2CWrite() */
 //
 // Read N bytes starting at a specific I2C internal register
+// returns 1 for success, 0 for error
 //
 int I2CReadRegister(BBI2C *pI2C, uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen)
 {
@@ -906,6 +916,18 @@ int iDevice = DEVICE_UNKNOWN;
        return DEVICE_TMF882X;
     }
   }
+  if (i == 0x44 || i == 0x45) // check for SHT3X temp/humidity sensor
+  {
+     cTemp[0] = 0xf3; cTemp[1] = 0x2d; // read status command
+     I2CWrite(pI2C, i, cTemp, 2);
+     I2CRead(pI2C, i, cTemp, 3); // read status bits
+     if ((cTemp[1] & 0x10) == 0x10) // reset bit set
+     {
+        *pCapabilities = DEVICE_CAP_TEMPERATURE | DEVICE_CAP_HUMIDITY;
+        return DEVICE_SHT3X;
+     }
+  }
+
   // Check for Microchip 24AAXXXE64 family serial 2 Kbit EEPROM
   if (i >= 0x50 && i <= 0x57) {
     uint32_t u32Temp = 0;
@@ -938,6 +960,15 @@ int iDevice = DEVICE_UNKNOWN;
           return DEVICE_BM8563;
         }
       }
+    }
+  }
+
+  if (i == 0x53) // could be Lite-On LTR390 UV light sensor
+  {
+    I2CReadRegister(pI2C, i, 0x06, cTemp, 1); // Part ID
+    if (cTemp[0] == 0xb2) { // a match!
+      *pCapabilities = DEVICE_CAP_VISIBLE_LIGHT | DEVICE_CAP_UV_LIGHT;
+      return DEVICE_LTR390;
     }
   }
 
