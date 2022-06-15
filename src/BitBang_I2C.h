@@ -19,6 +19,12 @@
 //
 #ifndef __BITBANG_I2C__
 #define __BITBANG_I2C__
+
+// On Linux, use it as C code, not C++
+#if !defined(ARDUINO) && defined(__cplusplus)
+extern "C" {
+#endif
+
 // supported devices
 enum {
   DEVICE_UNKNOWN = 0,
@@ -154,5 +160,10 @@ int I2CDiscoverDevice(BBI2C *pI2C, uint8_t i, uint32_t *pCapabilities);
 // Get the device's name as text
 //
 void I2CGetDeviceName(int iDevice, char *szName);
+
+#if !defined(ARDUINO) && defined(__cplusplus)
+}
+#endif
+
 #endif //__BITBANG_I2C__
 
