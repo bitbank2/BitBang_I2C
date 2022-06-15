@@ -692,8 +692,12 @@ uint8_t response = 0;
   response = !pWire->endTransmission();
 #endif
 #ifdef _LINUX_
-    if (ioctl(pI2C->file_i2c, I2C_SLAVE, addr) >= 0)
-        response = 1;
+    if (ioctl(pI2C->file_i2c, I2C_SLAVE, addr) >= 0) {
+	    // probe this address
+	uint8_t ucTemp;
+	if (read(pI2C->file_i2c, &ucTemp, 1) >= 0)
+    	    response = 1;
+    }
 #endif
     return response;
   }
