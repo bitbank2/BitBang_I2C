@@ -71,7 +71,7 @@ I2CReadRegister(&bbi2c, uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int i
 I2CWrite(&bbi2c, uint8_t iAddr, uint8_t *pData, int iLen);
 ```
 
-There are currently 29 devices recognized by the discover function:
+There are currently 43 devices recognized by the discover function:
 - SSD1306
 - SH1106
 - VL53L0X
@@ -102,6 +102,20 @@ There are currently 29 devices recognized by the discover function:
 - AXP192
 - AXP202
 - 24AAXXXE64
+- DS1307
+- MPU688X
+- FT6236G
+- FT6336G
+- FT6336U
+- FT6436
+- BM8563
+- BNO055
+- AHT20
+- TMF882X
+- SCD4X
+- ST25DV
+- LTR390
+- BMP388
 
 If you find this code useful, please consider sending a donation.
 
