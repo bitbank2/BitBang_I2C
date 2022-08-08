@@ -71,6 +71,7 @@ enum {
   DEVICE_SCD4X,
   DEVICE_ST25DV,
   DEVICE_LTR390,
+  DEVICE_BMP388,
   DEVICE_COUNT
 };
 
@@ -104,6 +105,7 @@ enum {
 #define DEVICE_CAP_KEYBOARD       0x04000000
 #define DEVICE_CAP_ADC            0x08000000
 #define DEVICE_CAP_DAC            0x10000000
+#define DEVICE_CAP_FIFO           0x20000000
 
 typedef struct mybbi2c
 {

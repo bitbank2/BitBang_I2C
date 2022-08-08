@@ -65,7 +65,7 @@ TwoWire *pWire = &Wire;
 static const char *szDeviceNames[] = {"Unknown","SSD1306","SH1106","VL53L0X","BMP180", "BMP280","BME280",
                 "MPU-60x0", "MPU-9250", "MCP9808","LSM6DS3", "ADXL345", "ADS1115","MAX44009",
                 "MAG3110", "CCS811", "HTS221", "LPS25H", "LSM9DS1","LM8330", "DS3231", "LIS3DH",
-                "LIS3DSH","INA219","SHT3X","HDC1080","MPU6886","BME680", "AXP202", "AXP192", "24AAXXXE64", "DS1307", "MPU688X", "FT6236G", "FT6336G", "FT6336U", "FT6436", "BM8563", "BNO055", "AHT20"};
+                "LIS3DSH","INA219","SHT3X","HDC1080","MPU6886","BME680", "AXP202", "AXP192", "24AAXXXE64", "DS1307", "MPU688X", "FT6236G", "FT6336G", "FT6336U", "FT6436", "BM8563", "BNO055", "AHT20","TMF882X","SCD4X", "ST25DV", "LTR390", "BMP388"};
 
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
 volatile uint8_t *iDDR_SCL, *iPort_SCL_Out;
@@ -695,7 +695,7 @@ uint8_t response = 0;
     if (ioctl(pI2C->file_i2c, I2C_SLAVE, addr) >= 0) {
 	    // probe this address
 	uint8_t ucTemp;
-	if (write(pI2C->file_i2c, &ucTemp, 1) >= 0)
+	if (read(pI2C->file_i2c, &ucTemp, 1) >= 0)
     	    response = 1;
     }
 #endif
@@ -1116,7 +1116,13 @@ int iDevice = DEVICE_UNKNOWN;
        *pCapabilities = DEVICE_CAP_TEMPERATURE | DEVICE_CAP_HUMIDITY | DEVICE_CAP_PRESSURE;
        return iDevice;
     }
-
+    // Check for BMP388
+    I2CReadRegister(pI2C, i, 0x00, cTemp, 1); // CHIP_ID
+    if (cTemp[0] == 0x50) { // BMP388
+       iDevice = DEVICE_BMP388;
+       *pCapabilities = DEVICE_CAP_TEMPERATURE | DEVICE_CAP_PRESSURE | DEVICE_CAP_FIFO;
+       return iDevice;
+    }
     // Check for LSM6DS3
     I2CReadRegister(pI2C, i, 0x0f, cTemp, 1); // WHO_AM_I
     if (cTemp[0] == 0x69) {
