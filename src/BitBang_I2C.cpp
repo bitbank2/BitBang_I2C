@@ -65,7 +65,7 @@ TwoWire *pWire = &Wire;
 static const char *szDeviceNames[] = {"Unknown","SSD1306","SH1106","VL53L0X","BMP180", "BMP280","BME280",
                 "MPU-60x0", "MPU-9250", "MCP9808","LSM6DS3", "ADXL345", "ADS1115","MAX44009",
                 "MAG3110", "CCS811", "HTS221", "LPS25H", "LSM9DS1","LM8330", "DS3231", "LIS3DH",
-                "LIS3DSH","INA219","SHT3X","HDC1080","MPU6886","BME680", "AXP202", "AXP192", "24AAXXXE64", "DS1307", "MPU688X", "FT6236G", "FT6336G", "FT6336U", "FT6436", "BM8563", "BNO055", "AHT20","TMF882X","SCD4X", "ST25DV", "LTR390", "BMP388"};
+                "LIS3DSH","INA219","SHT3X","HDC1080","MPU6886","BME680", "AXP202", "AXP192", "24AAXXXE64", "DS1307", "MPU688X", "FT6236G", "FT6336G", "FT6336U", "FT6436", "BM8563", "BNO055", "AHT20","TMF882X","SCD4X", "ST25DV", "LTR390", "BMP388", "BMI160"};
 
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
 volatile uint8_t *iDDR_SCL, *iPort_SCL_Out;
@@ -1097,7 +1097,15 @@ int iDevice = DEVICE_UNKNOWN;
        *pCapabilities = DEVICE_CAP_TEMPERATURE;
        return DEVICE_MCP9808;
     }
-       
+  
+   // Check for Bosch BMI160 IMU
+   if (i == 0x68 || i == 0x69) {
+     I2CReadRegister(pI2C, i, 0x00, cTemp, 1); // CHIP_ID
+     if (cTemp[0] == 0xD1) { // BMI160
+        *pCapabilities = DEVICE_CAP_TEMPERATURE | DEVICE_CAP_ACCELEROMETER | DEVICE_CAP_GYROSCOPE;
+        return DEVICE_BMI160;
+     }
+   }
    // Check for SCD4x CO2 sensors
    if (i == 0x62) {
      // DEBUG - for now, assume it's the SCD4x
