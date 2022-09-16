@@ -583,7 +583,7 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
    if (pI2C->bWire) // use Wire library
    {
 #if !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
-#if defined(TEENSYDUINO) || defined(ARDUINO_ARCH_MBED) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_NRF52) || defined(ARDUINO_ARCH_SAM)
+#if defined(TEENSYDUINO) || defined(ARDUINO_ARCH_MBED) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_NRF52) || defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_RP2040)
 #ifdef ARDUINO_ARCH_MBED 
  // Mbed Cortex-M MCUs can set I2C on custom pins
        if (pI2C->iSDA != 0xff) {
