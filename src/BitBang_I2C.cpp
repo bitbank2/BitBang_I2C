@@ -43,8 +43,9 @@ const int iRPIPins[] = {-1,-1,-1,2,-1,3,-1,4,14,-1,
                         21};
 
 #else // Arduino
+#ifdef ARDUINO
 #include <Arduino.h>
-static uint8_t iSDAState = 1;
+static unsigned char iSDAState = 1;
 
 #ifndef __AVR_ATtiny85__
 #include <Wire.h>
@@ -52,13 +53,16 @@ static uint8_t iSDAState = 1;
 MbedI2C *pWire;
 #else
 TwoWire *pWire = &Wire;
-#endif
-
-#endif
+#endif // MBED
+#endif // !AVR
 #ifdef W600_EV
 #include <W600FastIO.h>
 #define VARIANT_MCK 80000000ul
-#endif
+#endif // W600_EV
+#else // !ARDUINO
+#include "driver/i2c.h"
+#define I2C_MASTER_NUM              0
+#endif // ARDUINO
 #endif // _LINUX_
 #include "BitBang_I2C.h"
 
@@ -68,21 +72,21 @@ static const char *szDeviceNames[] = {"Unknown","SSD1306","SH1106","VL53L0X","BM
                 "LIS3DSH","INA219","SHT3X","HDC1080","MPU6886","BME680", "AXP202", "AXP192", "24AAXXXE64", "DS1307", "MPU688X", "FT6236G", "FT6336G", "FT6336U", "FT6436", "BM8563", "BNO055", "AHT20","TMF882X","SCD4X", "ST25DV", "LTR390", "BMP388"};
 
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
-volatile uint8_t *iDDR_SCL, *iPort_SCL_Out;
-volatile uint8_t *iDDR_SDA, *iPort_SDA_In, *iPort_SDA_Out;
-uint8_t iSDABit, iSCLBit;
+volatile unsigned char *iDDR_SCL, *iPort_SCL_Out;
+volatile unsigned char *iDDR_SDA, *iPort_SDA_In, *iPort_SDA_Out;
+unsigned char iSDABit, iSCLBit;
 #endif
 #ifdef FUTURE
 //#else // must be a 32-bit MCU
-volatile uint32_t *iDDR_SCL, *iPort_SCL_Out;
-volatile uint32_t *iDDR_SDA, *iPort_SDA_In, *iPort_SDA_Out;
-uint32_t iSDABit, iSCLBit;
+volatile unsigned int *iDDR_SCL, *iPort_SCL_Out;
+volatile unsigned int *iDDR_SDA, *iPort_SDA_In, *iPort_SDA_Out;
+unsigned int iSDABit, iSCLBit;
 #endif
 
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
-uint8_t getPinInfo(uint8_t pin, volatile uint8_t **iDDR, volatile uint8_t **iPort, int bInput)
+unsigned char getPinInfo(unsigned char pin, volatile unsigned char **iDDR, volatile unsigned char **iPort, int bInput)
 {
-  uint8_t port, bit;
+  unsigned char port, bit;
 
   port = (pin & 0xf0); // hex port (A,B,D,E,F)
   bit = pin & 0x7;
@@ -131,9 +135,9 @@ uint8_t getPinInfo(uint8_t pin, volatile uint8_t **iDDR, volatile uint8_t **iPor
 
 //#else // 32-bit version
 #ifdef FUTURE
-uint32_t getPinInfo(uint8_t pin, volatile uint32_t **iDDR, volatile uint32_t **iPort, int bInput)
+unsigned int getPinInfo(unsigned char pin, volatile unsigned int **iDDR, volatile unsigned int **iPort, int bInput)
 {
-  uint32_t port, bit;
+  unsigned int port, bit;
 
   if (pin <= 0xbf) // port 0
   {
@@ -151,7 +155,7 @@ uint32_t getPinInfo(uint8_t pin, volatile uint32_t **iDDR, volatile uint32_t **i
 } /* getPinInfo() */
 #endif // __AVR__
 
-inline uint8_t SDA_READ(uint8_t iSDA)
+inline unsigned char SDA_READ(unsigned char iSDA)
 {
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSDA >= 0xa0) // direct pin numbering
@@ -178,7 +182,7 @@ inline uint8_t SDA_READ(uint8_t iSDA)
   }
   return 0; // fall through?
 }
-inline void SCL_HIGH(uint8_t iSCL)
+inline void SCL_HIGH(unsigned char iSCL)
 {
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSCL >= 0xa0) // direct pin numbering
@@ -202,7 +206,7 @@ inline void SCL_HIGH(uint8_t iSCL)
   }
 }
 
-inline void SCL_LOW(uint8_t iSCL)
+inline void SCL_LOW(unsigned char iSCL)
 {
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSCL >= 0xa0) // direct pin numbering
@@ -227,7 +231,7 @@ inline void SCL_LOW(uint8_t iSCL)
   }
 }
 
-inline void SDA_HIGH(uint8_t iSDA)
+inline void SDA_HIGH(unsigned char iSDA)
 {
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSDA >= 0xa0) // direct pin numbering
@@ -254,7 +258,7 @@ inline void SDA_HIGH(uint8_t iSDA)
   }
 }
 
-inline void SDA_LOW(uint8_t iSDA)
+inline void SDA_LOW(unsigned char iSDA)
 {
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
   if (iSDA >= 0xa0) // direct pin numbering
@@ -308,11 +312,11 @@ void inline my_sleep_us(int iDelay)
 // otherwise return 1 for success
 //
 
-static inline int i2cByteOut(BBI2C *pI2C, uint8_t b)
+static inline int i2cByteOut(BBI2C *pI2C, unsigned char b)
 {
-uint8_t i, ack;
-uint8_t iSDA = pI2C->iSDA;
-uint8_t iSCL = pI2C->iSCL; // in case of bad C compiler
+unsigned char i, ack;
+unsigned char iSDA = pI2C->iSDA;
+unsigned char iSCL = pI2C->iSCL; // in case of bad C compiler
 int iDelay = pI2C->iDelay;
 
   for (i=0; i<8; i++)
@@ -345,13 +349,13 @@ int iDelay = pI2C->iDelay;
 #define SCL_LOW_AVR *iDDR_scl |= sclbit;
 #define SCL_HIGH_AVR *iDDR_scl &= ~sclbit;
 #define SDA_READ_AVR (*iPort_SDA_In & sdabit)
-static inline int i2cByteOutAVR(BBI2C *pI2C, uint8_t b)
+static inline int i2cByteOutAVR(BBI2C *pI2C, unsigned char b)
 {
-uint8_t i, ack;
-uint8_t *iDDR_sda = (uint8_t *)iDDR_SDA; // Put in local variables to avoid reading
-uint8_t *iDDR_scl = (uint8_t *)iDDR_SCL; // from volatile pointer vars each time
-uint8_t sdabit = iSDABit;
-uint8_t sclbit = iSCLBit;
+unsigned char i, ack;
+unsigned char *iDDR_sda = (unsigned char *)iDDR_SDA; // Put in local variables to avoid reading
+unsigned char *iDDR_scl = (unsigned char *)iDDR_SCL; // from volatile pointer vars each time
+unsigned char sdabit = iSDABit;
+unsigned char sclbit = iSCLBit;
 
      for (i=0; i<8; i++)
      {
@@ -380,15 +384,15 @@ uint8_t sclbit = iSCLBit;
 #define SCL_HIGH_FAST *iDDR = scl_high; 
 #define SDA_HIGH_FAST *iDDR = sda_high;
 #define SDA_READ_FAST *iDDR & iSDABit;
-static inline int i2cByteOutAVRFast(BBI2C *pI2C, uint8_t b)
+static inline int i2cByteOutAVRFast(BBI2C *pI2C, unsigned char b)
 {
-uint8_t i, ack;
-uint8_t *iDDR = (uint8_t *)iDDR_SDA; // Put in local variables to avoid reading
-uint8_t bOld = *iDDR; // current value
-uint8_t both_low = bOld | iSDABit | iSCLBit;
-uint8_t both_high = bOld & ~(iSDABit | iSCLBit);
-uint8_t scl_high = (bOld | iSDABit) & ~iSCLBit;
-uint8_t sda_high = (bOld | iSCLBit) & ~iSDABit;
+unsigned char i, ack;
+unsigned char *iDDR = (unsigned char *)iDDR_SDA; // Put in local variables to avoid reading
+unsigned char bOld = *iDDR; // current value
+unsigned char both_low = bOld | iSDABit | iSCLBit;
+unsigned char both_high = bOld & ~(iSDABit | iSCLBit);
+unsigned char scl_high = (bOld | iSDABit) & ~iSCLBit;
+unsigned char sda_high = (bOld | iSCLBit) & ~iSDABit;
 
      BOTH_LOW_FAST // start with both lines set to 0
      for (i=0; i<8; i++)
@@ -420,9 +424,9 @@ uint8_t sda_high = (bOld | iSCLBit) & ~iSDABit;
 #endif // __AVR__
 
 #ifndef __AVR_ATtiny85__
-static inline int i2cByteOutFast(BBI2C *pI2C, uint8_t b)
+static inline int i2cByteOutFast(BBI2C *pI2C, unsigned char b)
 {
-uint8_t i, ack, iSDA, iSCL;
+unsigned char i, ack, iSDA, iSCL;
 int iDelay;
 
      iSDA = pI2C->iSDA;
@@ -456,10 +460,10 @@ int iDelay;
 // if we get a NACK (negative acknowledge) return 0
 // otherwise return 1 for success
 //
-static inline uint8_t i2cByteIn(BBI2C *pI2C, uint8_t bLast)
+static inline unsigned char i2cByteIn(BBI2C *pI2C, unsigned char bLast)
 {
-uint8_t i;
-uint8_t b = 0;
+unsigned char i;
+unsigned char b = 0;
 
      SDA_HIGH(pI2C->iSDA); // set data line as input
      for (i=0; i<8; i++)
@@ -497,7 +501,7 @@ static inline void i2cEnd(BBI2C *pI2C)
 } /* i2cEnd() */
 
 
-static inline int i2cBegin(BBI2C *pI2C, uint8_t addr, uint8_t bRead)
+static inline int i2cBegin(BBI2C *pI2C, unsigned char addr, unsigned char bRead)
 {
    int rc;
    SDA_LOW(pI2C->iSDA); // data line low first
@@ -514,9 +518,9 @@ static inline int i2cBegin(BBI2C *pI2C, uint8_t addr, uint8_t bRead)
    return rc;
 } /* i2cBegin() */
 
-static inline int i2cWrite(BBI2C *pI2C, uint8_t *pData, int iLen)
+static inline int i2cWrite(BBI2C *pI2C, unsigned char *pData, int iLen)
 {
-uint8_t b;
+unsigned char b;
 int rc, iOldLen = iLen;
 
    rc = 1;
@@ -548,7 +552,7 @@ int rc, iOldLen = iLen;
    return (rc == 1) ? (iOldLen - iLen) : 0; // 0 indicates bad ack from sending a byte
 } /* i2cWrite() */
 
-static inline void i2cRead(BBI2C *pI2C, uint8_t *pData, int iLen)
+static inline void i2cRead(BBI2C *pI2C, unsigned char *pData, int iLen)
 {
    while (iLen--)
    {
@@ -569,7 +573,7 @@ void I2CGetDeviceName(int iDevice, char *szName)
 // Pass the pin numbers used for SDA and SCL
 // as well as the clock rate in Hz
 //
-void I2CInit(BBI2C *pI2C, uint32_t iClock)
+void I2CInit(BBI2C *pI2C, unsigned int iClock)
 {
 #ifdef _LINUX_
    if (gpioInitialise() < 0)
@@ -583,7 +587,7 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
    if (pI2C->bWire) // use Wire library
    {
 #if !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
-#if defined(TEENSYDUINO) || defined(ARDUINO_ARCH_MBED) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_NRF52) || defined(ARDUINO_ARCH_SAM)
+#if defined(NRF51) || defined(TEENSYDUINO) || defined(ARDUINO_ARCH_MBED) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_NRF52) || defined(ARDUINO_ARCH_SAM)
 #ifdef ARDUINO_ARCH_MBED 
  // Mbed Cortex-M MCUs can set I2C on custom pins
        if (pI2C->iSDA != 0xff) {
@@ -691,9 +695,9 @@ void I2CInit(BBI2C *pI2C, uint32_t iClock)
 // Test a specific I2C address to see if a device responds
 // returns 0 for no response, 1 for a response
 //
-uint8_t I2CTest(BBI2C *pI2C, uint8_t addr)
+unsigned char I2CTest(BBI2C *pI2C, unsigned char addr)
 {
-uint8_t response = 0;
+unsigned char response = 0;
 
   if (pI2C->bWire)
   {
@@ -707,7 +711,7 @@ uint8_t response = 0;
 #ifdef _LINUX_
     if (ioctl(pI2C->file_i2c, I2C_SLAVE, addr) >= 0) {
 	    // probe this address
-	uint8_t ucTemp;
+	unsigned char ucTemp;
 	if (read(pI2C->file_i2c, &ucTemp, 1) >= 0)
     	    response = 1;
     }
@@ -726,7 +730,7 @@ uint8_t response = 0;
 // returns a bitmap of devices which are present (128 bits = 16 bytes, LSB first)
 // A set bit indicates that a device responded at that address
 //
-void I2CScan(BBI2C *pI2C, uint8_t *pMap)
+void I2CScan(BBI2C *pI2C, unsigned char *pMap)
 {
   int i;
   for (i=0; i<16; i++) // clear the bitmap
@@ -744,7 +748,7 @@ void I2CScan(BBI2C *pI2C, uint8_t *pMap)
 // quits if a NACK is received and returns 0
 // otherwise returns the number of bytes written
 //
-int I2CWrite(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
+int I2CWrite(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen)
 {
   int rc = 0;
   
@@ -752,7 +756,7 @@ int I2CWrite(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
   {
 #if !defined ( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
     pWire->beginTransmission(iAddr);
-    pWire->write(pData, (uint8_t)iLen);
+    pWire->write(pData, (unsigned char)iLen);
     rc = !pWire->endTransmission();
 #endif
 #ifdef _LINUX_
@@ -776,7 +780,7 @@ int I2CWrite(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
 // Read N bytes starting at a specific I2C internal register
 // returns 1 for success, 0 for error
 //
-int I2CReadRegister(BBI2C *pI2C, uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen)
+int I2CReadRegister(BBI2C *pI2C, unsigned char iAddr, unsigned char u8Register, unsigned char *pData, int iLen)
 {
   int rc;
   
@@ -787,7 +791,7 @@ int I2CReadRegister(BBI2C *pI2C, uint8_t iAddr, uint8_t u8Register, uint8_t *pDa
       pWire->beginTransmission(iAddr);
       pWire->write(u8Register);
       pWire->endTransmission();
-      pWire->requestFrom(iAddr, (uint8_t)iLen);
+      pWire->requestFrom(iAddr, (unsigned char)iLen);
       while (i < iLen)
       {
           pData[i++] = pWire->read();
@@ -822,7 +826,7 @@ int I2CReadRegister(BBI2C *pI2C, uint8_t iAddr, uint8_t u8Register, uint8_t *pDa
 //
 // Read N bytes
 //
-int I2CRead(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
+int I2CRead(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen)
 {
   int rc;
   
@@ -830,7 +834,7 @@ int I2CRead(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
     {
         int i = 0;
 #if !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
-        pWire->requestFrom(iAddr, (uint8_t)iLen);
+        pWire->requestFrom(iAddr, (unsigned char)iLen);
         while (i < iLen)
         {
             pData[i++] = pWire->read();
@@ -856,9 +860,9 @@ int I2CRead(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen)
 // Figure out what device is at that address
 // returns the enumerated value
 //
-int I2CDiscoverDevice(BBI2C *pI2C, uint8_t i, uint32_t *pCapabilities)
+int I2CDiscoverDevice(BBI2C *pI2C, unsigned char i, unsigned int *pCapabilities)
 {
-uint8_t j, cTemp[8];
+unsigned char j, cTemp[8];
 int iDevice = DEVICE_UNKNOWN;
 
   if (i == 0x28 || i == 0x29) // Probably a Bosch BNO055
@@ -947,8 +951,8 @@ int iDevice = DEVICE_UNKNOWN;
 
   // Check for Microchip 24AAXXXE64 family serial 2 Kbit EEPROM
   if (i >= 0x50 && i <= 0x57) {
-    uint32_t u32Temp = 0;
-    I2CReadRegister(pI2C, i, 0xf8, (uint8_t *)&u32Temp,
+    unsigned int u32Temp = 0;
+    I2CReadRegister(pI2C, i, 0xf8, (unsigned char *)&u32Temp,
                     3); // check for Microchip's OUI
     if (u32Temp == 0x000004a3 || u32Temp == 0x00001ec0 ||
         u32Temp == 0x00d88039 || u32Temp == 0x005410ec) {
