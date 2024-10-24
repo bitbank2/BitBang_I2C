@@ -109,17 +109,19 @@ enum {
 
 typedef struct mybbi2c
 {
-uint8_t iSDA, iSCL; // pin numbers (0xff = disabled)
-uint8_t bWire, bAlign; // use the Wire library
-uint8_t iSDABit, iSCLBit; // bit numbers of the ports
-uint32_t iDelay;
+unsigned char iSDA, iSCL; // pin numbers (0xff = disabled)
+unsigned char bWire, bAlign; // use the Wire library
+unsigned char iSDABit, iSCLBit; // bit numbers of the ports
+unsigned int iDelay;
 #ifdef _LINUX_
 int file_i2c;
 int iBus;
 #else
+#ifdef ARDUINO
 volatile uint32_t *pSDADDR, *pSDAPORT; // data direction and port register addr
 volatile uint32_t *pSCLDDR, *pSCLPORT;
-#endif
+#endif // ARDUINO
+#endif // !LINUX
 } BBI2C;
 //
 // Read N bytes
@@ -128,13 +130,13 @@ int I2CRead(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen);
 //
 // Read N bytes starting at a specific I2C internal register
 //
-int I2CReadRegister(BBI2C *pI2C, uint8_t iAddr, uint8_t u8Register, uint8_t *pData, int iLen);
+int I2CReadRegister(BBI2C *pI2C, unsigned char iAddr, unsigned char u8Register, unsigned char *pData, int iLen);
 //
 // Write I2C data
 // quits if a NACK is received and returns 0
 // otherwise returns the number of bytes written
 //
-int I2CWrite(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen);
+int I2CWrite(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen);
 //
 // Scans for I2C devices on the bus
 // returns a bitmap of devices which are present (128 bits = 16 bytes, LSB first)
@@ -142,22 +144,22 @@ int I2CWrite(BBI2C *pI2C, uint8_t iAddr, uint8_t *pData, int iLen);
 // Test if an address responds
 // returns 0 if no response, 1 if it responds
 //
-uint8_t I2CTest(BBI2C *pI2C, uint8_t addr);
+uint8_t I2CTest(BBI2C *pI2C, unsigned char addr);
 
 // A set bit indicates that a device responded at that address
 //
-void I2CScan(BBI2C *pI2C, uint8_t *pMap);
+void I2CScan(BBI2C *pI2C, unsigned char *pMap);
 //
 // Initialize the I2C BitBang library
 // Pass the pin numbers used for SDA and SCL
 // as well as the clock rate in Hz
 //
-void I2CInit(BBI2C *pI2C, uint32_t iClock);
+void I2CInit(BBI2C *pI2C, unsigned int iClock);
 //
 // Figure out what device is at that address
 // returns the enumerated value
 //
-int I2CDiscoverDevice(BBI2C *pI2C, uint8_t i, uint32_t *pCapabilities);
+int I2CDiscoverDevice(BBI2C *pI2C, unsigned char i, unsigned int *pCapabilities);
 //
 // Get the device's name as text
 //
