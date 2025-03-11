@@ -86,7 +86,7 @@ int iDevice, iCount;
       if (map[i>>3] & (1 << (i & 7))) // device found
       {
         iCount++;
-	iDevice = I2CDiscoverDevice(&bbi2c, i);
+	iDevice = I2CDiscoverDevice(&bbi2c, i, NULL);
         printf("Device found at 0x%02x, type = %s\n", i, szNames[iDevice]);
       }
     } // for i
