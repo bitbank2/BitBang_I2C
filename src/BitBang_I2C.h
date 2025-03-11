@@ -159,7 +159,7 @@ void I2CInit(BBI2C *pI2C, unsigned int iClock);
 // Figure out what device is at that address
 // returns the enumerated value
 //
-int I2CDiscoverDevice(BBI2C *pI2C, unsigned char i, unsigned int *pCapabilities);
+int I2CDiscoverDevice(BBI2C *pI2C, unsigned char i, uint32_t *pCapabilities);
 //
 // Get the device's name as text
 //
