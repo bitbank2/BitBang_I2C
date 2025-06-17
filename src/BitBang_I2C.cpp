@@ -49,11 +49,6 @@ static unsigned char iSDAState = 1;
 
 #ifndef __AVR_ATtiny85__
 #include <Wire.h>
-#ifdef DARDUINO_ARCH_MBED 
-MbedI2C *pWire;
-#else
-TwoWire *pWire = &Wire;
-#endif // MBED
 #endif // !AVR
 #ifdef W600_EV
 #include <W600FastIO.h>
@@ -648,33 +643,37 @@ void I2CInit(BBI2C *pI2C, unsigned int iClock)
 #if defined(NRF51) || defined(TEENSYDUINO) || defined(ARDUINO_ARCH_MBED) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_NRF52) || defined(ARDUINO_ARCH_SAM)
 #ifdef ARDUINO_ARCH_MBED 
  // Mbed Cortex-M MCUs can set I2C on custom pins
-       if (pI2C->iSDA != 0xff) {
-          pWire = new MbedI2C((int)pI2C->iSDA, (int)pI2C->iSCL);
+       if (pI2C->iSDA == 0xff || pI2C->iSDA == I2C_SDA) {
+           pI2C->pWire = &Wire;
+#ifdef I2C_SDA1
+       } else if (pI2C->iSDA == I2C_SDA1) {
+           pI2C->pWire = &Wire1;
+#endif
        } else {
-          pWire = &Wire;
+           pI2C->pWire = new MbedI2C((int)pI2C->iSDA, (int)pI2C->iSCL);
        }
 #endif
-       pWire->begin();
+       pI2C->pWire->begin();
 #else
        if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff) {
-          pWire->begin();
+           pI2C->pWire->begin();
        } else {
 #ifdef ARDUINO_RASPBERRY_PI_PICO
-          pWire->setSDA((pin_size_t)pI2C->iSDA);
-          pWire->setSCL((pin_size_t)pI2C->iSCL);
-          pWire->begin();
+           pI2C->pWire->setSDA((pin_size_t)pI2C->iSDA);
+           pI2C->pWire->setSCL((pin_size_t)pI2C->iSCL);
+           pI2C->pWire->begin();
 #else
 #ifdef ARDUINO_ARCH_RENESAS
-          pWire = new TwoWire((int)pI2C->iSDA, (int)pI2C->iSCL);
-          pWire->begin();
+           pI2C->pWire = new TwoWire((int)pI2C->iSDA, (int)pI2C->iSCL);
+           pI2C->pWire->begin();
 #else
-          pWire->begin((int)pI2C->iSDA, (int)pI2C->iSCL);
+           pI2C->pWire->begin((int)pI2C->iSDA, (int)pI2C->iSCL);
 #endif
 #endif
        }
 #endif
-       pWire->setClock(iClock);
-//       pWire->setTimeout(20000L); // set a timeout of 20ms
+       pI2C->pWire->setClock(iClock);
+//       pI2C->pWire->setTimeout(20000L); // set a timeout of 20ms
 #endif
 #ifdef _LINUX_
        {
@@ -776,8 +775,8 @@ unsigned char response = 0;
   // We use the return value of
   // the Write.endTransmisstion to see if
   // a device did acknowledge to the address.
-  pWire->beginTransmission(addr);
-  response = !pWire->endTransmission();
+  pI2C->pWire->beginTransmission(addr);
+  response = !pI2C->pWire->endTransmission();
 #endif
 #ifdef _LINUX_
     if (ioctl(pI2C->file_i2c, I2C_SLAVE, addr) >= 0) {
@@ -839,9 +838,9 @@ int I2CWrite(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen)
       return (ret == ESP_OK);
 #endif // ESP_IDF
 #if defined(ARDUINO) && !defined ( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
-    pWire->beginTransmission(iAddr);
-    pWire->write(pData, (unsigned char)iLen);
-    rc = !pWire->endTransmission();
+    pI2C->pWire->beginTransmission(iAddr);
+    pI2C->pWire->write(pData, (unsigned char)iLen);
+    rc = !pI2C->pWire->endTransmission();
 #endif
 #ifdef _LINUX_
     if (ioctl(pI2C->file_i2c, I2C_SLAVE, iAddr) >= 0)
@@ -877,13 +876,13 @@ int I2CReadRegister(BBI2C *pI2C, unsigned char iAddr, unsigned char u8Register, 
       return iLen;
 #endif // ESP-IDF
 #if defined(ARDUINO) && !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
-      pWire->beginTransmission(iAddr);
-      pWire->write(u8Register);
-      pWire->endTransmission();
-      pWire->requestFrom(iAddr, (unsigned char)iLen);
+      pI2C->pWire->beginTransmission(iAddr);
+      pI2C->pWire->write(u8Register);
+      pI2C->pWire->endTransmission();
+      pI2C->pWire->requestFrom(iAddr, (unsigned char)iLen);
       while (i < iLen)
       {
-          pData[i++] = pWire->read();
+          pData[i++] = pI2C->pWire->read();
       }
 #endif
 #ifdef _LINUX_
@@ -945,10 +944,10 @@ int I2CRead(BBI2C *pI2C, unsigned char iAddr, unsigned char *pData, int iLen)
 #endif // ESP-IDF
 
 #if defined(ARDUINO) && !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
-        pWire->requestFrom(iAddr, (unsigned char)iLen);
+        pI2C->pWire->requestFrom(iAddr, (unsigned char)iLen);
         while (i < iLen)
         {
-            pData[i++] = pWire->read();
+            pData[i++] = pI2C->pWire->read();
         }
 #endif
 #ifdef _LINUX_

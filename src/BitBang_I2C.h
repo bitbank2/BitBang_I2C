@@ -23,6 +23,8 @@
 // On Linux, use it as C code, not C++
 #if !defined(ARDUINO) && defined(__cplusplus)
 extern "C" {
+#else
+#include <Wire.h>
 #endif
 
 // supported devices
@@ -118,6 +120,11 @@ int file_i2c;
 int iBus;
 #else
 #ifdef ARDUINO
+#ifdef DARDUINO_ARCH_MBED 
+MbedI2C *pWire;
+#else
+TwoWire *pWire = &Wire;
+#endif // MBED
 volatile uint32_t *pSDADDR, *pSDAPORT; // data direction and port register addr
 volatile uint32_t *pSCLDDR, *pSCLPORT;
 #endif // ARDUINO
