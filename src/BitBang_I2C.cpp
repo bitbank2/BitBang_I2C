@@ -658,7 +658,7 @@ void I2CInit(BBI2C *pI2C, unsigned int iClock)
        if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff) {
            pI2C->pWire->begin();
        } else {
-#ifdef ARDUINO_RASPBERRY_PI_PICO
+#if defined( ARDUINO_RASPBERRY_PI_PICO ) || defined( ARDUINO_ARCH_RP2040 )
            pI2C->pWire->setSDA((pin_size_t)pI2C->iSDA);
            pI2C->pWire->setSCL((pin_size_t)pI2C->iSCL);
            pI2C->pWire->begin();
