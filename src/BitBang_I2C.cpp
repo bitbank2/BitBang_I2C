@@ -640,7 +640,9 @@ void I2CInit(BBI2C *pI2C, unsigned int iClock)
    if (pI2C->bWire) // use Wire library
    {
 #if defined (ARDUINO) && !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
-#if defined(NRF51) || defined(TEENSYDUINO) || defined(ARDUINO_ARCH_MBED) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_NRF52) || defined(ARDUINO_ARCH_SAM)
+#if defined(NRF51) || defined(TEENSYDUINO) || defined(ARDUINO_ARCH_MBED) || defined( __AVR__ ) \
+        || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_NRF52) \
+        || defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_ZEPHYR)
 #ifdef ARDUINO_ARCH_MBED 
  // Mbed Cortex-M MCUs can set I2C on custom pins
        if (pI2C->iSDA == 0xff || pI2C->iSDA == I2C_SDA) {
@@ -653,7 +655,11 @@ void I2CInit(BBI2C *pI2C, unsigned int iClock)
            pI2C->pWire = new MbedI2C((int)pI2C->iSDA, (int)pI2C->iSCL);
        }
 #endif
+       if (pI2C->pWire == nullptr) pI2C->pWire = &Wire;
+
+       // some drivers like FT6236G init functions memset this structure to 0
        pI2C->pWire->begin();
+
 #else
        if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff) {
            pI2C->pWire->begin();
