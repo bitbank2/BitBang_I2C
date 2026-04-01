@@ -17,6 +17,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
+#if defined( __AVR__ ) || defined( ARDUINO_ARCH_AVR )
+#define WIMPY_MCU
+#endif
+
 #ifdef _LINUX_
 #include <stdint.h>
 #include <stdlib.h>
@@ -105,10 +109,13 @@ uint8_t digitalRead(int iPin)
 #endif // _LINUX_
 #include "BitBang_I2C.h"
 
+#ifndef WIMPY_MCU
 static const char *szDeviceNames[] = {"Unknown","SSD1306","SH1106","VL53L0X","BMP180", "BMP280","BME280",
                 "MPU-60x0", "MPU-9250", "MCP9808","LSM6DS3", "ADXL345", "ADS1115","MAX44009",
                 "MAG3110", "CCS811", "HTS221", "LPS25H", "LSM9DS1","LM8330", "DS3231", "LIS3DH",
-                "LIS3DSH","INA219","SHT3X","HDC1080","MPU6886","BME680", "AXP202", "AXP192", "24AAXXXE64", "DS1307", "MPU688X", "FT6236G", "FT6336G", "FT6336U", "FT6436", "BM8563", "BNO055", "AHT20","TMF882X","SCD4X", "ST25DV", "LTR390", "BMP388"};
+                "LIS3DSH","INA219","SHT3X","HDC1080","MPU6886","BME680", "AXP202", "AXP192", "24AAXXXE64", "DS1307", "MPU688X", "FT6236G", "FT6336G", "FT6336U", "FT6436", "BM8563", "BNO055", "AHT20","TMF882X","SCD4X", "ST25DV", "LTR390", "BMP388", "MMC5603"};
+
+#endif // !WIMPY_MCU
 
 #if defined ( __AVR__ ) && !defined( ARDUINO_ARCH_MEGAAVR )
 volatile unsigned char *iDDR_SCL, *iPort_SCL_Out;
@@ -603,9 +610,13 @@ static inline void i2cRead(BBI2C *pI2C, unsigned char *pData, int iLen)
 //
 void I2CGetDeviceName(int iDevice, char *szName)
 {
+#ifdef WIMPY_MCU
+  (void)iDevice; (void)szName;
+#else
   if (iDevice >= 0 && iDevice < DEVICE_COUNT) {
      strcpy(szName, szDeviceNames[iDevice]);
   }
+#endif
 } /* I2CGetDeviceName() */
 //
 // Initialize the I2C BitBang library
@@ -639,6 +650,7 @@ void I2CInit(BBI2C *pI2C, unsigned int iClock)
 
    if (pI2C->bWire) // use Wire library
    {
+       pI2C->pWire = &Wire; // default use of Wire library
 #if defined (ARDUINO) && !defined( _LINUX_ ) && !defined( __AVR_ATtiny85__ )
 #if defined(NRF51) || defined(TEENSYDUINO) || defined(ARDUINO_ARCH_MBED) || defined( __AVR__ ) || defined( NRF52 ) || defined ( ARDUINO_ARCH_NRF52840 ) || defined(ARDUINO_ARCH_NRF52) || defined(ARDUINO_ARCH_SAM)
 #ifdef ARDUINO_ARCH_MBED 
@@ -658,9 +670,12 @@ void I2CInit(BBI2C *pI2C, unsigned int iClock)
        if (pI2C->iSDA == 0xff || pI2C->iSCL == 0xff) {
            pI2C->pWire->begin();
        } else {
-#if defined( ARDUINO_RASPBERRY_PI_PICO ) || defined( ARDUINO_ARCH_RP2040 )
+#if defined( ARDUINO_RASPBERRY_PI_PICO ) || defined( ARDUINO_ARCH_RP2040 ) || defined ( ARDUINO_ARCH_ZEPHYR )
+#ifndef ARDUINO_ARCH_ZEPHYR
            pI2C->pWire->setSDA((pin_size_t)pI2C->iSDA);
            pI2C->pWire->setSCL((pin_size_t)pI2C->iSCL);
+#endif // ZEPHYR
+
            pI2C->pWire->begin();
 #else
 #ifdef ARDUINO_ARCH_RENESAS
@@ -996,6 +1011,15 @@ int iDevice = DEVICE_UNKNOWN;
     return iDevice;
   }
   
+  if (i >= 0x30 && i <= 0x37) { // Probably a MEMSIC Magnetometer
+    I2CReadRegister(pI2C, i, 0x39, cTemp, 1); // device ID
+    if (cTemp[0] == 0x10) {
+      iDevice = DEVICE_MMC5603;
+      *pCapabilities = DEVICE_CAP_MAGNETOMETER;
+      return iDevice;
+    }
+  }
+
   if (i == 0x34 || i == 0x35) // Probably an AXP202/AXP192 PMU chip
   {
     I2CReadRegister(pI2C, i, 0x03, cTemp, 1); // chip ID
